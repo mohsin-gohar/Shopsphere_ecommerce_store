@@ -20,6 +20,7 @@ import { CartOffcanvas } from './components/CartOffcanvas';
 import { CheckoutModal } from './components/CheckoutModal';
 import { WishlistModal } from './components/WishlistModal';
 import { AssignmentInfoModal } from './components/AssignmentInfoModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastContainer } from './components/Toast';
 import { Footer } from './components/Footer';
 
@@ -63,7 +64,19 @@ export default function App() {
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem(CART_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed)
+        ? parsed.filter(
+            (item) =>
+              item &&
+              typeof item === 'object' &&
+              item.product &&
+              typeof item.product.id === 'number' &&
+              typeof item.quantity === 'number' &&
+              item.quantity > 0
+          )
+        : [];
     } catch {
       return [];
     }
@@ -73,7 +86,9 @@ export default function App() {
   const [wishlist, setWishlist] = useState<number[]>(() => {
     try {
       const saved = localStorage.getItem(WISHLIST_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'number') : [];
     } catch {
       return [];
     }
@@ -83,7 +98,20 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>(() => {
     try {
       const saved = localStorage.getItem(ORDERS_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : INITIAL_SAMPLE_ORDERS;
+      if (!saved) return INITIAL_SAMPLE_ORDERS;
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return INITIAL_SAMPLE_ORDERS;
+      const validOrders = parsed.filter(
+        (order) =>
+          order &&
+          typeof order === 'object' &&
+          typeof order.id === 'string' &&
+          order.customer &&
+          typeof order.customer.email === 'string' &&
+          Array.isArray(order.items) &&
+          typeof order.total === 'number'
+      );
+      return validOrders.length > 0 ? validOrders : INITIAL_SAMPLE_ORDERS;
     } catch {
       return INITIAL_SAMPLE_ORDERS;
     }
@@ -93,7 +121,15 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
     try {
       const saved = localStorage.getItem(AUTH_USER_KEY);
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      const isValid =
+        parsed &&
+        typeof parsed === 'object' &&
+        typeof parsed.id === 'string' &&
+        typeof parsed.email === 'string' &&
+        (parsed.role === 'admin' || parsed.role === 'customer');
+      return isValid ? parsed : null;
     } catch {
       return null;
     }
@@ -410,7 +446,8 @@ export default function App() {
   }, [products, selectedProduct]);
 
   return (
-    <Suspense
+    <ErrorBoundary>
+      <Suspense
       fallback={
         <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
           <div className="spinner-border text-dark" role="status" aria-label="Loading" />
@@ -539,7 +576,7 @@ export default function App() {
 
         {/* VIEW 9: EXECUTIVE ADMIN ERP & CRM CONSOLE */}
         {activePage === 'dashboard' && (
-          !currentUser ? (
+          !currentUser || currentUser.role !== 'admin' ? (
             <AuthPage
               onLoginSuccess={handleLoginSuccess}
               onCancel={() => handleNavigate('shop')}
@@ -636,5 +673,6 @@ export default function App() {
       />
     </div>
     </Suspense>
+    </ErrorBoundary>
   );
 }

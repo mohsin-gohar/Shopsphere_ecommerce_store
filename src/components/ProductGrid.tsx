@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import { Product, Category, SortOption, FilterState } from '../types/ecommerce';
 import { ProductCard } from './ProductCard';
 import { Filter, RotateCcw, AlertTriangle, ArrowUpDown, DollarSign, X } from 'lucide-react';
@@ -55,6 +55,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
     filters.category !== 'All' ||
     filters.sortBy !== 'featured' ||
     filters.maxPrice < maxAvailablePrice ||
+    filters.minRating > 0 ||
     filters.badge !== 'All';
 
   // Filter and sort products
@@ -82,6 +83,11 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
 
         // Max price filter
         if (product.price > filters.maxPrice) {
+          return false;
+        }
+
+        // Minimum rating filter
+        if (filters.minRating > 0 && product.rating < filters.minRating) {
           return false;
         }
 
@@ -154,6 +160,21 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                       {badge}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              {/* Minimum Rating Filter */}
+              <div className="d-flex align-items-center gap-1.5">
+                <select
+                  className="form-select form-select-sm rounded-pill border-secondary-subtle bg-light px-3 py-1.5"
+                  value={filters.minRating}
+                  onChange={(e) => onFilterChange({ minRating: Number(e.target.value) })}
+                  aria-label="Filter by minimum rating"
+                >
+                  <option value={0}>All Ratings</option>
+                  <option value={4}>4.0+ and up</option>
+                  <option value={4.5}>4.5+ and up</option>
+                  <option value={4.8}>4.8+ and up</option>
                 </select>
               </div>
 
@@ -249,6 +270,18 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                 />
               </span>
             )}
+            {filters.minRating > 0 && (
+              <span className="badge bg-light text-dark border rounded-pill d-inline-flex align-items-center gap-1 px-2.5 py-1.5">
+                Rating: {filters.minRating}+
+                <button
+                  type="button"
+                  className="btn-close ms-1 p-0"
+                  style={{ fontSize: '0.55rem' }}
+                  onClick={() => onFilterChange({ minRating: 0 })}
+                />
+              </span>
+            )}
+
             {filters.maxPrice < maxAvailablePrice && (
               <span className="badge bg-light text-dark border rounded-pill d-inline-flex align-items-center gap-1 px-2.5 py-1.5">
                 Under ${filters.maxPrice}

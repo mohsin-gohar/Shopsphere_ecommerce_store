@@ -81,7 +81,7 @@ function mapDummyJsonToProduct(item: DummyJsonItem, index: number): Product {
   const oldPrice = Math.round(price * (1 + ((item.discountPercentage || 18) / 100)));
 
   return {
-    id: 21 + index,
+    id: 1000 + index,
     name: item.title,
     category,
     price,
@@ -125,7 +125,9 @@ export async function fetchProducts(): Promise<{ data: Product[]; source: 'api' 
     if (primaryRes.status === 'fulfilled' && primaryRes.value.ok) {
       const data: Product[] = await primaryRes.value.json();
       if (Array.isArray(data) && data.length > 0) {
-        baseProducts = data;
+        baseProducts = data.filter((p) =>
+          ['Men', 'Women', 'Shoes', 'Accessories'].includes(p.category)
+        );
       }
     }
 
@@ -147,6 +149,10 @@ export async function fetchProducts(): Promise<{ data: Product[]; source: 'api' 
             'sports-accessories',
             'tablets',
             'vehicle',
+            'beauty',
+            'fragrances',
+            'skin-care',
+            'cosmetics',
           ];
           return !nonFashionCategories.some((blocked) => category.includes(blocked));
         });
@@ -162,7 +168,28 @@ export async function fetchProducts(): Promise<{ data: Product[]; source: 'api' 
     throw new Error('Not enough products fetched from live APIs');
   } catch (error) {
     console.warn('API fetchProducts failed or timed out, using fallback dataset:', error);
-    return { data: FALLBACK_PRODUCTS, source: 'fallback' };
+    const blockedTerms = [
+      'home-decoration',
+      'kitchen-accessories',
+      'groceries',
+      'laptops',
+      'smartphones',
+      'furniture',
+      'tablets',
+      'motorcycle',
+      'vehicle',
+      'mobile-accessories',
+      'beauty',
+      'fragrances',
+      'skin-care',
+      'sports-accessories',
+    ];
+    const fashionFallback = FALLBACK_PRODUCTS.filter((product) => {
+      const image = (product.image || '').toLowerCase();
+      const name = (product.name || '').toLowerCase();
+      return !blockedTerms.some((term) => image.includes(term) || name.includes(term));
+    });
+    return { data: fashionFallback.length >= 20 ? fashionFallback : FALLBACK_PRODUCTS, source: 'fallback' };
   }
 }
 

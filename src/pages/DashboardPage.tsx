@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Product, Order, AuthUser } from '../types/ecommerce';
 import {
   DollarSign,
@@ -16,6 +16,7 @@ import {
   Truck,
   ArrowRight,
   Filter,
+  Download,
   BarChart3,
   X,
   CreditCard,
@@ -128,8 +129,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     membershipTier: 'Gold VIP' as ManagedUser['membershipTier'],
   });
 
-  // Managed Users State (Live control for admin)
-  const [usersList, setUsersList] = useState<ManagedUser[]>([
+  const USERS_STORAGE_KEY = 'shopsphere_managed_users_v1';
+
+  const DEFAULT_MANAGED_USERS: ManagedUser[] = [
     {
       id: 'USR-001',
       name: 'Mohsin Gohar',
@@ -182,21 +184,51 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       totalSpent: 120.0,
       joinedDate: 'Oct 2026',
     },
-  ]);
+  ];
 
-  // Synchronize new checkout orders into usersList automatically
+  // Managed Users State (Live control for admin)
+  const [usersList, setUsersList] = useState<ManagedUser[]>(() => {
+    try {
+      const saved = localStorage.getItem(USERS_STORAGE_KEY);
+      if (!saved) return DEFAULT_MANAGED_USERS;
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return DEFAULT_MANAGED_USERS;
+      const valid = parsed.filter(
+        (u) =>
+          u &&
+          typeof u === 'object' &&
+          typeof u.id === 'string' &&
+          typeof u.email === 'string' &&
+          typeof u.name === 'string'
+      );
+      return valid.length > 0 ? valid : DEFAULT_MANAGED_USERS;
+    } catch {
+      return DEFAULT_MANAGED_USERS;
+    }
+  });
+
+  // Track orders already reflected in managed user totals to avoid double counting
+  const processedOrderIdsRef = useRef<Set<string>>(new Set(orders.map((order) => order.id)));
+
+  // Synchronize only newly created checkout orders into usersList
   useEffect(() => {
-    orders.forEach((ord) => {
-      setUsersList((prev) => {
-        const exists = prev.find(
+    const newOrders = orders.filter((order) => !processedOrderIdsRef.current.has(order.id));
+    if (newOrders.length === 0) return;
+
+    newOrders.forEach((order) => processedOrderIdsRef.current.add(order.id));
+
+    setUsersList((prev) => {
+      let next = [...prev];
+      newOrders.forEach((ord) => {
+        const index = next.findIndex(
           (u) => u.email.toLowerCase() === ord.customer.email.toLowerCase()
         );
-        if (exists) {
-          return prev.map((u) =>
-            u.email.toLowerCase() === ord.customer.email.toLowerCase()
-              ? { ...u, totalOrders: u.totalOrders + 1, totalSpent: u.totalSpent + ord.total }
-              : u
-          );
+        if (index >= 0) {
+          next[index] = {
+            ...next[index],
+            totalOrders: next[index].totalOrders + 1,
+            totalSpent: next[index].totalSpent + ord.total,
+          };
         } else {
           const newUser: ManagedUser = {
             id: `USR-${Math.floor(100 + Math.random() * 900)}`,
@@ -211,11 +243,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             totalSpent: ord.total,
             joinedDate: 'Today',
           };
-          return [newUser, ...prev];
+          next = [newUser, ...next];
         }
       });
+      return next;
     });
   }, [orders]);
+
+  // Persist managed users to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(usersList));
+    } catch (err) {
+      console.error('Failed to save managed users:', err);
+    }
+  }, [usersList, USERS_STORAGE_KEY]);
 
   // Escape key listener for modals
   useEffect(() => {
@@ -234,12 +276,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   // KPIs
   const totalGrossRevenue = useMemo(() => {
-    const base = 4850;
-    const realOrders = orders.reduce((sum, o) => sum + o.total, 0);
-    return base + realOrders;
+    return orders.reduce((sum, o) => sum + (typeof o.total === 'number' ? o.total : 0), 0);
   }, [orders]);
 
-  const totalOrdersCount = orders.length + 18;
+  const totalOrdersCount = orders.length;
   const averageOrderValue = totalOrdersCount > 0 ? totalGrossRevenue / totalOrdersCount : 0;
 
   // Filtered Orders
@@ -288,6 +328,54 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       return matchesSearch && matchesRole;
     });
   }, [usersList, userSearch, userRoleFilter]);
+
+  // Real revenue analytics derived from orders
+  const categoryRevenue = useMemo(() => {
+    const revenue: Record<string, number> = {};
+    orders.forEach((order) => {
+      order.items.forEach((item) => {
+        const category = item.product.category || 'Other';
+        revenue[category] = (revenue[category] || 0) + item.product.price * item.quantity;
+      });
+    });
+    return revenue;
+  }, [orders]);
+
+  const totalCategoryRevenue = useMemo(
+    () => Object.values(categoryRevenue).reduce((sum, value) => sum + value, 0),
+    [categoryRevenue]
+  );
+
+  const handleExportOrders = () => {
+    const rows = [
+      ['Order ID', 'Customer', 'Email', 'Status', 'Items', 'Subtotal', 'Discount', 'Shipping', 'Total', 'Date'],
+      ...filteredOrders.map((order) => [
+        order.id,
+        order.customer.fullName,
+        order.customer.email,
+        order.status,
+        order.items.map((item) => `${item.product.name} x${item.quantity}`).join('; '),
+        order.subtotal.toFixed(2),
+        order.discount.toFixed(2),
+        order.shipping.toFixed(2),
+        order.total.toFixed(2),
+        order.date,
+      ]),
+    ];
+    const csv = rows
+      .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `shopsphere-orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    onShowToast('Export Complete', `${filteredOrders.length} orders exported to CSV.`, 'success');
+  };
 
   // Product Operations
   const handleCreateProduct = (e: React.FormEvent) => {
@@ -680,6 +768,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </button>
               )}
             </div>
+            <button
+              onClick={handleExportOrders}
+              className="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 text-xs font-semibold flex items-center gap-1"
+              title="Export filtered orders to CSV"
+            >
+              <Download size={13} /> Export CSV
+            </button>
           </div>
 
           {filteredOrders.length === 0 ? (
@@ -1167,12 +1262,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </h6>
               {['Men', 'Women', 'Shoes', 'Accessories'].map((cat) => {
                 const count = products.filter((p) => p.category === cat).length;
-                const pct = Math.round((count / (products.length || 1)) * 100);
+                const revenue = categoryRevenue[cat] || 0;
+                const pct =
+                  totalCategoryRevenue > 0
+                    ? Math.round((revenue / totalCategoryRevenue) * 100)
+                    : products.length > 0
+                    ? Math.round((count / products.length) * 100)
+                    : 0;
                 return (
                   <div key={cat} className="mb-4">
                     <div className="flex justify-between text-xs font-semibold mb-1">
                       <span>{cat} Atelier</span>
-                      <span>{count} SKUs ({pct}%)</span>
+                      <span>
+                        ${revenue.toFixed(0)} ({pct}%)
+                      </span>
                     </div>
                     <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
                       <div className="bg-slate-900 h-full rounded-full" style={{ width: `${pct}%` }}></div>

@@ -71,10 +71,9 @@ export const CustomerPortalPage: React.FC<CustomerPortalPageProps> = ({
   // Filter orders for this customer (admins can inspect all orders)
   const customerOrders = React.useMemo(() => {
     if (user.role === 'admin') return orders;
-    const matched = orders.filter(
+    return orders.filter(
       (order) => order.customer.email.toLowerCase() === user.email.toLowerCase()
     );
-    return matched.length > 0 ? matched : orders;
   }, [orders, user]);
 
   const handleCopyVoucher = async (code: string) => {
