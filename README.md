@@ -81,5 +81,6 @@ Develop a responsive e-commerce web application using ReactJS with live API inte
 - **Username / Staff Email:** \`admin@shopsphere.studio\`
 - **Password:** \`admin123\`
 - *Features 1-Click Auto Fill inside the login portal.*
-- *Production note: replace demo credentials with a secure identity provider and never commit secrets.*
+
+<!-- deployment-trigger: 2026-10-22 -->
 "# Shopsphere_ecommerce_store" 
