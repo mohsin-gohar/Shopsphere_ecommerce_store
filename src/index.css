@@ -319,3 +319,33 @@ footer .list-unstyled button:hover {
 }
 
 
+/* Premium monochrome theme overrides */
+.btn-primary,
+.bg-primary {
+  background-color: #0f172a !important;
+  border-color: #0f172a !important;
+}
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: #020617 !important;
+  border-color: #020617 !important;
+}
+.text-primary {
+  color: #0f172a !important;
+}
+.border-primary {
+  border-color: #0f172a !important;
+}
+.badge.bg-primary {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+:focus-visible {
+  outline: 2px solid #0f172a;
+  outline-offset: 2px;
+}
+::selection {
+  background-color: #0f172a;
+  color: #ffffff;
+}
+

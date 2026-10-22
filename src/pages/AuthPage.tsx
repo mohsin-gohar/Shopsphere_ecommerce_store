@@ -25,13 +25,15 @@ interface AuthPageProps {
 export const AuthPage: React.FC<AuthPageProps> = ({
   onLoginSuccess,
   onCancel,
+  defaultRole,
 }) => {
   // Mode: Sign In vs Create Account
   const [authMode, setAuthMode] = useState<'signin' | 'register'>('signin');
 
   // Sign In State
-  const [email, setEmail] = useState('mohsingohar759@gmail.com');
-  const [password, setPassword] = useState('customer123');
+  const isAdminDefault = defaultRole === 'admin';
+  const [email, setEmail] = useState(isAdminDefault ? 'admin@shopsphere.studio' : 'mohsingohar759@gmail.com');
+  const [password, setPassword] = useState(isAdminDefault ? 'admin123' : 'customer123');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 

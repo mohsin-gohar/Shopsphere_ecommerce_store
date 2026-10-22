@@ -68,8 +68,14 @@ export const CustomerPortalPage: React.FC<CustomerPortalPageProps> = ({
     });
   }, [user]);
 
-  // Filter orders matching this customer or default to all current session orders
-  const customerOrders = orders;
+  // Filter orders for this customer (admins can inspect all orders)
+  const customerOrders = React.useMemo(() => {
+    if (user.role === 'admin') return orders;
+    const matched = orders.filter(
+      (order) => order.customer.email.toLowerCase() === user.email.toLowerCase()
+    );
+    return matched.length > 0 ? matched : orders;
+  }, [orders, user]);
 
   const handleCopyVoucher = async (code: string) => {
     const ok = await copyToClipboard(code);

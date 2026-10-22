@@ -133,7 +133,24 @@ export async function fetchProducts(): Promise<{ data: Product[]; source: 'api' 
     if (dummyRes.status === 'fulfilled' && dummyRes.value.ok) {
       const dummyJson = await dummyRes.value.json();
       if (Array.isArray(dummyJson.products) && dummyJson.products.length > 0) {
-        dummyProducts = dummyJson.products.map(mapDummyJsonToProduct);
+        const fashionOnly = dummyJson.products.filter((item: DummyJsonItem) => {
+          const category = (item.category || '').toLowerCase();
+          const nonFashionCategories = [
+            'furniture',
+            'groceries',
+            'home-decoration',
+            'kitchen-accessories',
+            'laptops',
+            'mobile-accessories',
+            'motorcycle',
+            'smartphones',
+            'sports-accessories',
+            'tablets',
+            'vehicle',
+          ];
+          return !nonFashionCategories.some((blocked) => category.includes(blocked));
+        });
+        dummyProducts = fashionOnly.map(mapDummyJsonToProduct);
       }
     }
 
