@@ -1,0 +1,321 @@
+@import "tailwindcss";
+
+:root {
+  --canvas-bg: #fcfcfd;
+  --surface-card: #ffffff;
+  --ink-primary: #111827;
+  --ink-secondary: #4b5563;
+  --ink-muted: #9ca3af;
+  --hairline-border: #e5e7eb;
+  --accent-ink: #0f172a;
+  --accent-focus: #2563eb;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  background-color: var(--canvas-bg);
+  color: var(--ink-primary);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Container width guarantee across all viewports for expansive luxury feel */
+.container {
+  width: 100% !important;
+  max-width: 1440px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding-left: 1.5rem !important;
+  padding-right: 1.5rem !important;
+}
+
+/* Tabular figures for pricing and stats */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hairline dividers and borders */
+.border-hairline {
+  border-color: var(--hairline-border) !important;
+}
+
+/* Minimalist studio product card */
+.product-card {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(226, 232, 240, 0.85) !important;
+  border-radius: 1.25rem !important;
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+.product-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 35px -10px rgba(15, 23, 42, 0.09), 0 8px 12px -6px rgba(15, 23, 42, 0.04) !important;
+  border-color: rgba(203, 213, 225, 0.95) !important;
+}
+
+.product-card-img-container {
+  overflow: hidden;
+  position: relative;
+  background-color: #f8fafc;
+  border-top-left-radius: 1.25rem;
+  border-top-right-radius: 1.25rem;
+  aspect-ratio: 4 / 3;
+  width: 100%;
+}
+
+.product-card-img {
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.product-card:hover .product-card-img {
+  transform: scale(1.06);
+}
+
+/* Star rating colors */
+.star-filled {
+  color: #111827;
+}
+
+.star-empty {
+  color: #e5e7eb;
+}
+
+/* Offcanvas cart drawer */
+.cart-drawer {
+  width: 100%;
+  max-width: 440px;
+  box-shadow: -12px 0 35px rgba(0, 0, 0, 0.08);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f9fafb;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Toast container */
+.toast-container-custom {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1090;
+}
+
+/* Responsive & Performance Optimizations */
+@media (max-width: 576px) {
+  .product-card-img {
+    height: 160px;
+  }
+  .cart-drawer {
+    width: 100vw;
+    max-width: 100vw;
+  }
+  .toast-container-custom {
+    bottom: 1rem;
+    right: 1rem;
+    left: 1rem;
+  }
+}
+
+/* Fast touch response & smooth hardware acceleration */
+button, a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.table-responsive {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Smooth layout containment for grid items */
+.product-card {
+  contain: content;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 320px;
+}
+
+/* Luxury Glassmorphism & Navbar enhancements */
+.luxury-navbar {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.9);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+}
+
+.luxury-nav-link {
+  position: relative;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #4b5563;
+  padding: 0.38rem 0.75rem;
+  border-radius: 9999px;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.luxury-nav-link:hover {
+  color: #0f172a;
+  background-color: rgba(241, 245, 249, 0.85);
+}
+
+.luxury-nav-link.active {
+  color: #0f172a;
+  font-weight: 700;
+  background-color: #f1f5f9;
+}
+
+/* Luxury Search Pill */
+.luxury-search-box {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.luxury-search-box:focus-within {
+  background-color: #ffffff;
+  border-color: #0f172a;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.07);
+}
+
+.luxury-kbd {
+  font-size: 0.65rem;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-weight: 600;
+  color: #64748b;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+}
+
+/* Luxury Dark Footer Theme Matching Studio Identity */
+.luxury-footer {
+  background: linear-gradient(180deg, #0f172a 0%, #090d16 100%);
+  color: #94a3b8;
+  border-top: 1px solid #1e293b;
+}
+
+.luxury-footer-link {
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 0.84rem;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+}
+
+.luxury-footer-link:hover {
+  color: #ffffff;
+  transform: translateX(3px);
+}
+
+.luxury-footer-social-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background-color: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(51, 65, 85, 0.8);
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+
+.luxury-footer-social-btn:hover {
+  background-color: #ffffff;
+  color: #090d16;
+  border-color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.luxury-input-dark {
+  background-color: rgba(30, 41, 59, 0.65);
+  border: 1px solid #334155;
+  color: #ffffff;
+  font-size: 0.86rem;
+  transition: all 0.2s ease;
+  border-radius: 9999px;
+}
+
+.luxury-input-dark:focus {
+  background-color: rgba(30, 41, 59, 0.95);
+  border-color: #94a3b8;
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.luxury-input-dark::placeholder {
+  color: #64748b;
+}
+
+.luxury-trust-card {
+  background: rgba(30, 41, 59, 0.35);
+  border: 1px solid rgba(51, 65, 85, 0.45);
+  border-radius: 0.85rem;
+  padding: 1.25rem 1rem;
+  transition: all 0.22s ease;
+}
+
+.luxury-trust-card:hover {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(71, 85, 105, 0.8);
+  transform: translateY(-2px);
+}
+
+/* Crisp White Footer Links (Completely Overrides Bootstrap Blue) */
+.footer-link-white,
+footer ul li button,
+footer .list-unstyled button {
+  color: #ffffff !important;
+  text-decoration: none !important;
+  font-size: 0.82rem !important;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  text-align: left !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  opacity: 0.95 !important;
+}
+
+.footer-link-white:hover,
+footer ul li button:hover,
+footer .list-unstyled button:hover {
+  color: #38bdf8 !important;
+  opacity: 1 !important;
+  transform: translateX(3px) !important;
+}
+
+
