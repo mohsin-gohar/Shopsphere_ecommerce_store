@@ -117,7 +117,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         const registeredUsersStr = localStorage.getItem('shopsphere_registered_users');
         let registeredList: Array<{ name: string; email: string; phone?: string }> = [];
         try {
-          registeredList = registeredUsersStr ? JSON.parse(registeredUsersStr) : [];
+          const parsed = registeredUsersStr ? JSON.parse(registeredUsersStr) : [];
+          if (Array.isArray(parsed)) {
+            registeredList = parsed.filter(
+              (u) =>
+                u &&
+                typeof u === 'object' &&
+                typeof u.email === 'string' &&
+                typeof u.name === 'string'
+            );
+          }
         } catch {}
 
         const matchedCustomer = registeredList.find(
@@ -181,7 +190,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       const registeredUsersStr = localStorage.getItem('shopsphere_registered_users');
       let registeredList: Array<{ name: string; email: string; phone?: string }> = [];
       try {
-        registeredList = registeredUsersStr ? JSON.parse(registeredUsersStr) : [];
+        const parsed = registeredUsersStr ? JSON.parse(registeredUsersStr) : [];
+        if (Array.isArray(parsed)) {
+          registeredList = parsed.filter(
+            (u) =>
+              u &&
+              typeof u === 'object' &&
+              typeof u.email === 'string' &&
+              typeof u.name === 'string'
+          );
+        }
       } catch {}
 
       const cleanRegEmail = regEmail.trim().toLowerCase();

@@ -141,6 +141,9 @@ A responsive e-commerce web application developed with ReactJS and REST API inte
       className="modal show d-block"
       style={{ backgroundColor: 'rgba(15, 23, 42, 0.75)', zIndex: 1095 }}
       tabIndex={-1}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="assignment-info-modal-title"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -153,7 +156,7 @@ A responsive e-commerce web application developed with ReactJS and REST API inte
                 <BookOpen size={18} />
               </div>
               <div>
-                <h5 className="modal-title fw-bold text-dark">
+                <h5 id="assignment-info-modal-title" className="modal-title fw-bold text-dark">
                   Assignment Project: E-Commerce Store
                 </h5>
                 <small className="text-muted">ReactJS with REST API Integration</small>

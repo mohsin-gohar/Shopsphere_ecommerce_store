@@ -407,7 +407,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                 <div className="p-2 bg-slate-50 rounded-xl">
                   <Truck size={16} className="mx-auto text-slate-700 mb-1" />
                   <span className="block text-[11px] font-bold text-slate-800">Free Courier</span>
-                  <span className="block text-[10px] text-slate-500">Over $150</span>
+                  <span className="block text-[10px] text-slate-500">Over $75</span>
                 </div>
                 <div className="p-2 bg-slate-50 rounded-xl">
                   <RotateCcw size={16} className="mx-auto text-slate-700 mb-1" />
@@ -498,7 +498,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                 <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-600">
                   <li>
                     <strong>Standard Express:</strong> 2–4 business days (Complimentary on orders
-                    over $150).
+                    over $75).
                   </li>
                   <li>
                     <strong>Global Air Priority:</strong> 3–6 business days worldwide with tracked

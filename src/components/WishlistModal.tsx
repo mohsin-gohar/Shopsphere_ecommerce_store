@@ -38,6 +38,9 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
       className="modal show d-block"
       style={{ backgroundColor: 'rgba(15, 23, 42, 0.75)', zIndex: 1075 }}
       tabIndex={-1}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="wishlist-modal-title"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -50,7 +53,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                 <Heart size={18} fill="currentColor" />
               </div>
               <div>
-                <h5 className="modal-title fw-bold text-dark mb-0">Your Wishlist</h5>
+                <h5 id="wishlist-modal-title" className="modal-title fw-bold text-dark mb-0">Your Wishlist</h5>
                 <small className="text-muted">
                   {wishlistProducts.length} {wishlistProducts.length === 1 ? 'item' : 'items'} saved
                 </small>
@@ -69,18 +72,18 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
           <div className="modal-body p-4 bg-white">
             {wishlistProducts.length === 0 ? (
               <div className="text-center py-5">
-                <div className="bg-light p-3 rounded-circle d-inline-block mb-3 text-muted">
-                  <Heart size={36} className="text-muted opacity-50" />
+                <div className="bg-slate-100 p-3.5 rounded-circle d-inline-block mb-3 text-slate-400">
+                  <Heart size={36} />
                 </div>
-                <h6 className="fw-bold text-dark mb-1">Your wishlist is empty</h6>
-                <p className="text-muted small mb-3">
-                  Click the heart icon on any product card to save it here for later.
+                <h6 className="fw-bold text-slate-950 mb-1">Your Wishlist is Empty</h6>
+                <p className="text-slate-500 small mb-3">
+                  Click the heart icon on any piece in the archive to curate your personal collection.
                 </p>
                 <button
                   onClick={onClose}
-                  className="btn btn-primary rounded-pill px-4 btn-sm fw-semibold"
+                  className="btn btn-dark rounded-pill px-4 btn-sm fw-semibold"
                 >
-                  Explore Catalog
+                  Explore Archive
                 </button>
               </div>
             ) : (
@@ -88,7 +91,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                 {wishlistProducts.map((product) => (
                   <div
                     key={product.id}
-                    className="card border rounded-3 p-3 bg-white shadow-2xs d-flex flex-row gap-3 align-items-center"
+                    className="card border border-slate-200/80 rounded-3 p-3 bg-white shadow-2xs d-flex flex-row gap-3 align-items-center"
                   >
                     <img
                       src={product.image}
@@ -103,18 +106,18 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                       onClick={() => onQuickView(product)}
                     />
                     <div className="flex-grow-1 min-w-0">
-                      <div className="fw-bold text-dark small text-truncate" title={product.name}>
+                      <div className="fw-bold text-slate-950 small text-truncate" title={product.name}>
                         {product.name}
                       </div>
-                      <div className="text-muted" style={{ fontSize: '0.75rem' }}>
-                        {product.category}
+                      <div className="text-slate-500" style={{ fontSize: '0.75rem' }}>
+                        {product.category} Atelier
                       </div>
-                      <div className="fw-extrabold text-primary small mt-1">${product.price}</div>
+                      <div className="fw-black text-slate-950 small mt-1 tabular-nums">${product.price}</div>
                     </div>
                     <div className="d-flex flex-column gap-1">
                       <button
                         onClick={() => onAddToCart(product)}
-                        className="btn btn-primary btn-sm rounded-pill px-3 py-1 d-flex align-items-center gap-1 shadow-2xs"
+                        className="btn btn-dark btn-sm rounded-pill px-3 py-1 d-flex align-items-center gap-1 shadow-2xs"
                       >
                         <ShoppingBag size={14} /> Add
                       </button>

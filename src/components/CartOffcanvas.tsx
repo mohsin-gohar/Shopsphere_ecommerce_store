@@ -106,17 +106,20 @@ export const CartOffcanvas: React.FC<CartOffcanvasProps> = ({
       <div
         className="position-fixed top-0 end-0 h-100 bg-white shadow-lg d-flex flex-column cart-drawer"
         style={{ zIndex: 1080 }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cart-drawer-title"
       >
         {/* Drawer Header */}
-        <div className="p-3 border-bottom d-flex align-items-center justify-content-between bg-light">
-          <div className="d-flex align-items-center gap-2">
-            <div className="bg-primary text-white p-2 rounded-3">
+        <div className="p-3.5 border-bottom d-flex align-items-center justify-content-between bg-white">
+          <div className="d-flex align-items-center gap-2.5">
+            <div className="bg-slate-950 text-white p-2 rounded-3 shadow-2xs">
               <ShoppingBag size={18} />
             </div>
             <div>
-              <h5 className="fw-bold mb-0 text-dark">Your Shopping Cart</h5>
-              <small className="text-muted">
-                {totalItemCount} {totalItemCount === 1 ? 'item' : 'items'} in bag
+              <h5 id="cart-drawer-title" className="fw-black mb-0 text-slate-950 tracking-tight">Your Shopping Bag</h5>
+              <small className="text-slate-500">
+                {totalItemCount} {totalItemCount === 1 ? 'piece' : 'pieces'} selected
               </small>
             </div>
           </div>
@@ -145,19 +148,19 @@ export const CartOffcanvas: React.FC<CartOffcanvasProps> = ({
 
         {/* Free Shipping Progress bar */}
         {items.length > 0 && (
-          <div className="bg-primary-subtle p-2.5 border-bottom px-3">
-            <div className="d-flex align-items-center justify-content-between small mb-1">
-              <span className="text-primary-emphasis fw-semibold d-flex align-items-center gap-1">
-                <Truck size={14} />
+          <div className="bg-slate-50 p-2.5 border-bottom px-3.5">
+            <div className="d-flex align-items-center justify-content-between small mb-1.5">
+              <span className="text-slate-900 fw-semibold d-flex align-items-center gap-1.5" style={{ fontSize: '0.78rem' }}>
+                <Truck size={14} className="text-slate-800" />
                 {amountToFreeShipping > 0
-                  ? `Add $${amountToFreeShipping.toFixed(2)} more for FREE shipping!`
-                  : '🎉 Congratulations! You unlocked FREE shipping!'}
+                  ? `Add $${amountToFreeShipping.toFixed(2)} more for Complimentary Express Courier`
+                  : '✓ Complimentary Express Courier Unlocked'}
               </span>
-              <span className="text-primary-emphasis fw-bold">{progressPercent}%</span>
+              <span className="text-slate-900 fw-bold tabular-nums" style={{ fontSize: '0.75rem' }}>{progressPercent}%</span>
             </div>
-            <div className="progress" style={{ height: '5px' }}>
+            <div className="progress bg-slate-200" style={{ height: '5px' }}>
               <div
-                className="progress-bar bg-primary"
+                className="progress-bar bg-slate-950"
                 role="progressbar"
                 style={{ width: `${progressPercent}%` }}
                 aria-valuenow={progressPercent}
@@ -172,18 +175,18 @@ export const CartOffcanvas: React.FC<CartOffcanvasProps> = ({
         <div className="flex-grow-1 overflow-y-auto p-3">
           {items.length === 0 ? (
             <div className="h-100 d-flex flex-column align-items-center justify-content-center text-center p-4">
-              <div className="bg-light p-4 rounded-circle mb-3 text-muted">
-                <ShoppingBag size={48} className="text-muted opacity-50" />
+              <div className="bg-slate-100 p-4 rounded-circle mb-3 text-slate-400">
+                <ShoppingBag size={44} />
               </div>
-              <h5 className="fw-bold text-dark mb-1">Your cart is empty</h5>
-              <p className="text-muted small mb-4">
-                Looks like you haven't added any products to your shopping bag yet.
+              <h5 className="fw-bold text-slate-950 mb-1">Your Shopping Bag is Empty</h5>
+              <p className="text-slate-500 small mb-4">
+                Explore our seasonal archive to add tailored garments and leather goods.
               </p>
               <button
                 onClick={onClose}
-                className="btn btn-primary rounded-pill px-4 py-2 shadow-xs fw-semibold"
+                className="btn btn-dark rounded-pill px-4 py-2.5 shadow-2xs fw-semibold"
               >
-                Explore Products
+                Explore Archive
               </button>
             </div>
           ) : (
@@ -340,15 +343,15 @@ export const CartOffcanvas: React.FC<CartOffcanvasProps> = ({
               </div>
 
               <div className="d-flex justify-content-between border-top pt-2 mt-1">
-                <span className="fw-bold text-dark fs-6">Total Amount:</span>
-                <span className="fw-extrabold text-primary fs-5">${grandTotal.toFixed(2)}</span>
+                <span className="fw-bold text-slate-950 fs-6">Total Amount:</span>
+                <span className="fw-black text-slate-950 fs-5 tabular-nums">${grandTotal.toFixed(2)}</span>
               </div>
             </div>
 
             {/* Checkout Action Button */}
             <button
               onClick={onProceedToCheckout}
-              className="btn btn-primary w-100 rounded-pill py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
+              className="btn btn-dark w-100 rounded-pill py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
             >
               Proceed to Checkout <ArrowRight size={18} />
             </button>

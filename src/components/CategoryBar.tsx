@@ -1,6 +1,6 @@
 import React from 'react';
 import { Category } from '../types/ecommerce';
-import { Layers } from 'lucide-react';
+import { Layers, ArrowUpRight } from 'lucide-react';
 
 interface CategoryBarProps {
   categories: Category[];
@@ -19,20 +19,22 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
 }) => {
   return (
     <div className="mb-5">
-      <div className="d-flex align-items-center justify-content-between mb-3">
+      <div className="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
         <div>
-          <h4 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-            <Layers size={22} className="text-primary" /> Browse by Department
+          <span className="text-slate-500 text-uppercase tracking-widest fw-bold d-block mb-0.5" style={{ fontSize: '0.68rem' }}>
+            Curated Departments
+          </span>
+          <h4 className="fw-black text-slate-950 mb-0 d-flex align-items-center gap-2 tracking-tight">
+            <Layers size={20} className="text-slate-900" /> Browse by Atelier Division
           </h4>
-          <p className="text-muted small mb-0">Select a category to filter the catalog collection</p>
         </div>
         <button
           onClick={() => onSelectCategory('All')}
-          className={`btn btn-sm rounded-pill px-3 ${
-            activeCategory === 'All' ? 'btn-primary' : 'btn-outline-secondary'
+          className={`btn btn-sm rounded-pill px-3.5 py-1.5 fw-semibold transition-all ${
+            activeCategory === 'All' ? 'btn-dark text-white shadow-2xs' : 'btn-outline-dark'
           }`}
         >
-          View All ({totalProductsCount})
+          View Complete Archive ({totalProductsCount})
         </button>
       </div>
 
@@ -41,20 +43,50 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
         <div className="col-6 col-md-4 col-lg">
           <div
             onClick={() => onSelectCategory('All')}
-            className={`card rounded-4 overflow-hidden cursor-pointer h-100 transition-all ${
+            className={`card rounded-4 overflow-hidden h-100 transition-all ${
               activeCategory === 'All'
-                ? 'border-2 border-dark bg-slate-100 shadow-xs'
-                : 'border border-hairline bg-white hover:border-dark shadow-2xs'
+                ? 'border-2 border-slate-950 bg-slate-950 text-white shadow-sm'
+                : 'border border-slate-200/90 bg-white hover:border-slate-400 shadow-2xs'
             }`}
-            style={{ cursor: 'pointer', transition: 'all 0.2s ease-in-out' }}
+            style={{ cursor: 'pointer', minHeight: '116px', transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)' }}
           >
-            <div className="p-3 d-flex flex-column justify-content-between h-100">
+            <div className="p-3.5 d-flex flex-column justify-content-between h-100">
               <div className="d-flex justify-content-between align-items-center mb-2">
-                <span className="badge bg-dark text-white rounded-pill text-xs">Catalog</span>
-                <span className="text-muted small fw-semibold">{totalProductsCount} items</span>
+                <span
+                  className={`badge rounded-pill text-xs px-2.5 py-1 ${
+                    activeCategory === 'All' ? 'bg-white text-slate-950' : 'bg-slate-900 text-white'
+                  }`}
+                >
+                  Archive
+                </span>
+                <span
+                  className="small fw-bold tabular-nums"
+                  style={{
+                    fontSize: '0.75rem',
+                    color: activeCategory === 'All' ? '#cbd5e1' : '#64748b',
+                  }}
+                >
+                  {totalProductsCount} pieces
+                </span>
               </div>
-              <h6 className="fw-bold text-dark mb-0">All Collections</h6>
-              <small className="text-muted">Complete archive</small>
+              <div>
+                <h6
+                  className={`fw-bold mb-0.5 d-flex align-items-center justify-content-between ${
+                    activeCategory === 'All' ? 'text-white' : 'text-slate-950'
+                  }`}
+                >
+                  <span>All Collections</span>
+                  <ArrowUpRight size={14} className="opacity-75" />
+                </h6>
+                <small
+                  style={{
+                    fontSize: '0.74rem',
+                    color: activeCategory === 'All' ? '#94a3b8' : '#64748b',
+                  }}
+                >
+                  Full seasonal curation
+                </small>
+              </div>
             </div>
           </div>
         </div>
@@ -70,10 +102,10 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
                 onClick={() => onSelectCategory(cat.name)}
                 className={`card rounded-4 overflow-hidden h-100 transition-all position-relative ${
                   isActive
-                    ? 'border-2 border-dark bg-slate-100 shadow-xs'
-                    : 'border border-hairline bg-white hover:border-dark shadow-2xs'
+                    ? 'border-2 border-slate-950 bg-slate-950 text-white shadow-sm'
+                    : 'border border-slate-200/90 bg-white hover:border-slate-400 shadow-2xs'
                 }`}
-                style={{ cursor: 'pointer', minHeight: '110px' }}
+                style={{ cursor: 'pointer', minHeight: '116px', transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)' }}
               >
                 <div className="position-absolute top-0 end-0 bottom-0 w-40 opacity-20 overflow-hidden">
                   <img
@@ -88,16 +120,41 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
                     }}
                   />
                 </div>
-                <div className="p-3 d-flex flex-column justify-content-between h-100 position-relative z-1">
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className={`badge rounded-pill ${isActive ? 'bg-primary text-white' : 'bg-light text-dark border'}`}>
+                <div className="p-3.5 d-flex flex-column justify-content-between h-100 position-relative z-1">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span
+                      className={`badge rounded-pill px-2.5 py-1 ${
+                        isActive ? 'bg-white text-slate-950' : 'bg-slate-100 text-slate-900 border border-slate-200'
+                      }`}
+                    >
                       {cat.name}
                     </span>
-                    <span className="text-muted small fw-semibold">{count} items</span>
+                    <span
+                      className="small fw-bold tabular-nums"
+                      style={{
+                        fontSize: '0.75rem',
+                        color: isActive ? '#cbd5e1' : '#64748b',
+                      }}
+                    >
+                      {count} pieces
+                    </span>
                   </div>
                   <div>
-                    <h6 className="fw-bold text-dark mb-0">{cat.name}</h6>
-                    <small className="text-muted text-truncate d-block" style={{ fontSize: '0.75rem' }}>
+                    <h6
+                      className={`fw-bold mb-0.5 d-flex align-items-center justify-content-between ${
+                        isActive ? 'text-white' : 'text-slate-950'
+                      }`}
+                    >
+                      <span>{cat.name}</span>
+                      <ArrowUpRight size={14} className="opacity-75" />
+                    </h6>
+                    <small
+                      className="text-truncate d-block"
+                      style={{
+                        fontSize: '0.74rem',
+                        color: isActive ? '#94a3b8' : '#64748b',
+                      }}
+                    >
                       {cat.description}
                     </small>
                   </div>
@@ -110,3 +167,4 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
     </div>
   );
 };
+

@@ -169,10 +169,10 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onExploreShop }) => {
       </div>
 
       {/* Metrics Banner */}
-      <div className="row g-3 text-center">
+      <div className="row g-3 text-center mb-5">
         <div className="col-6 col-md-3">
           <div className="p-3 bg-light rounded-3 border border-hairline">
-            <div className="fs-3 fw-bold text-dark tabular-nums">20+</div>
+            <div className="fs-3 fw-bold text-dark tabular-nums">120+</div>
             <div className="text-muted small">Curated Essentials</div>
           </div>
         </div>
@@ -192,6 +192,65 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onExploreShop }) => {
           <div className="p-3 bg-light rounded-3 border border-hairline">
             <div className="fs-3 fw-bold text-dark tabular-nums">30 Days</div>
             <div className="text-muted small">Hassle-Free Returns</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Global Flagship Ateliers */}
+      <div className="card border border-hairline rounded-4 p-4 p-md-5 bg-white">
+        <div className="text-center max-w-2xl mx-auto mb-4">
+          <span className="text-muted small text-uppercase tracking-wider fw-semibold d-block mb-1">
+            Global Presence
+          </span>
+          <h4 className="fw-bold text-dark mb-2">Our Flagship Boutiques &amp; Private Ateliers</h4>
+          <p className="text-secondary small mb-0">
+            Experience our textiles, custom bespoke alterations, and private client styling sessions in person.
+          </p>
+        </div>
+
+        <div className="row g-3">
+          <div className="col-sm-6 col-lg-3">
+            <div className="p-3 rounded-3 bg-light border border-hairline h-100">
+              <span className="badge bg-dark rounded-pill mb-2">New York</span>
+              <h6 className="fw-bold text-dark mb-1">SoHo Flagship</h6>
+              <div className="text-muted small mb-2">482 Broome Street, New York, NY 10013</div>
+              <div className="text-secondary small" style={{ fontSize: '0.75rem' }}>
+                Mon – Sat: 11:00 AM – 7:00 PM<br />Sun: 12:00 PM – 6:00 PM
+              </div>
+            </div>
+          </div>
+
+          <div className="col-sm-6 col-lg-3">
+            <div className="p-3 rounded-3 bg-light border border-hairline h-100">
+              <span className="badge bg-dark rounded-pill mb-2">Milan</span>
+              <h6 className="fw-bold text-dark mb-1">Brera Studio</h6>
+              <div className="text-muted small mb-2">Via Fiori Chiari 14, 20121 Milano, Italy</div>
+              <div className="text-secondary small" style={{ fontSize: '0.75rem' }}>
+                Tue – Sat: 10:30 AM – 7:30 PM<br />Private VIP appointments on Mon
+              </div>
+            </div>
+          </div>
+
+          <div className="col-sm-6 col-lg-3">
+            <div className="p-3 rounded-3 bg-light border border-hairline h-100">
+              <span className="badge bg-dark rounded-pill mb-2">London</span>
+              <h6 className="fw-bold text-dark mb-1">Mayfair Townhouse</h6>
+              <div className="text-muted small mb-2">24 Mount Street, Mayfair, London W1K 2RB</div>
+              <div className="text-secondary small" style={{ fontSize: '0.75rem' }}>
+                Mon – Sat: 10:00 AM – 6:30 PM<br />Complimentary espresso lounge
+              </div>
+            </div>
+          </div>
+
+          <div className="col-sm-6 col-lg-3">
+            <div className="p-3 rounded-3 bg-light border border-hairline h-100">
+              <span className="badge bg-dark rounded-pill mb-2">Islamabad</span>
+              <h6 className="fw-bold text-dark mb-1">F-7 Atelier Suite</h6>
+              <div className="text-muted small mb-2">Kohsar Plaza, F-7/3, Islamabad 44000</div>
+              <div className="text-secondary small" style={{ fontSize: '0.75rem' }}>
+                Mon – Sat: 11:00 AM – 8:00 PM<br />Bespoke tailoring &amp; express pickups
+              </div>
+            </div>
           </div>
         </div>
       </div>

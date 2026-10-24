@@ -267,40 +267,58 @@ export const TrackingPage: React.FC<TrackingPageProps> = ({ orders, onExploreSho
                 Fulfillment Milestone Journey
               </h6>
 
-              <div className="row g-2 text-center position-relative">
-                {trackingSteps.map((step, idx) => {
-                  const isDone = idx <= currentStepIndex;
-                  const isCurrent = idx === currentStepIndex;
+              <div className="position-relative">
+                {/* Connecting Track Line */}
+                <div
+                  className="position-absolute top-0 start-0 w-100 d-none d-sm-block"
+                  style={{ top: '19px', height: '3px', zIndex: 0 }}
+                >
+                  <div className="bg-slate-200 w-100 h-100 position-relative rounded-pill">
+                    <div
+                      className="bg-dark h-100 rounded-pill"
+                      style={{
+                        width: `${(currentStepIndex / 4) * 100}%`,
+                        transition: 'width 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+                      }}
+                    />
+                  </div>
+                </div>
 
-                  return (
-                    <div key={idx} className="col">
-                      <div className="d-flex flex-column align-items-center">
-                        <div
-                          className={`rounded-circle d-flex align-items-center justify-content-center mb-2 shadow-2xs ${
-                            isDone ? 'bg-dark text-white' : 'bg-light text-muted border'
-                          }`}
-                          style={{ width: '38px', height: '38px' }}
-                        >
-                          {isDone ? <CheckCircle2 size={18} /> : <Clock size={16} />}
+                <div className="row g-2 text-center position-relative z-1">
+                  {trackingSteps.map((step, idx) => {
+                    const isDone = idx <= currentStepIndex;
+                    const isCurrent = idx === currentStepIndex;
+
+                    return (
+                      <div key={idx} className="col">
+                        <div className="d-flex flex-column align-items-center">
+                          <div
+                            className={`rounded-circle d-flex align-items-center justify-content-center mb-2 shadow-2xs position-relative z-2 ${
+                              isDone ? 'bg-dark text-white ring-4 ring-white' : 'bg-white text-muted border border-slate-300'
+                            }`}
+                            style={{ width: '38px', height: '38px' }}
+                          >
+                            {isDone ? <CheckCircle2 size={18} /> : <Clock size={16} />}
+                          </div>
+                          <span
+                            className={`small fw-bold d-block mb-1 ${
+                              isCurrent ? 'text-dark' : isDone ? 'text-secondary' : 'text-muted'
+                            }`}
+                            style={{ fontSize: '0.8rem' }}
+                          >
+                            {step.label}
+                          </span>
+                          <span
+                            className="text-muted d-none d-md-block"
+                            style={{ fontSize: '0.7rem', lineHeight: '1.2' }}
+                          >
+                            {step.detail}
+                          </span>
                         </div>
-                        <span
-                          className={`small fw-bold d-block mb-1 ${
-                            isCurrent ? 'text-dark' : isDone ? 'text-secondary' : 'text-muted'
-                          }`}
-                          style={{ fontSize: '0.8rem' }}
-                        >
-                          {step.label}
-                        </span>
-                        <span
-                          className="text-muted d-none d-md-block"
-                          style={{ fontSize: '0.7rem', lineHeight: '1.2' }}
-                        >
-                          {step.detail}
-                        </span>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>

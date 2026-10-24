@@ -72,7 +72,7 @@ export const CustomerPortalPage: React.FC<CustomerPortalPageProps> = ({
   const customerOrders = React.useMemo(() => {
     if (user.role === 'admin') return orders;
     return orders.filter(
-      (order) => order.customer.email.toLowerCase() === user.email.toLowerCase()
+      (order) => (order.customer?.email || '').toLowerCase() === user.email.toLowerCase()
     );
   }, [orders, user]);
 
@@ -106,16 +106,16 @@ export const CustomerPortalPage: React.FC<CustomerPortalPageProps> = ({
     <div className="py-4 py-md-5">
       {/* If Admin is viewing this customer portal */}
       {user.role === 'admin' && (
-        <div className="alert alert-dark border border-hairline rounded-4 p-3 mb-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 shadow-2xs">
+        <div className="alert bg-slate-950 text-white border border-slate-800 rounded-4 p-3.5 mb-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 shadow-2xs">
           <div className="d-flex align-items-center gap-2.5">
-            <div className="bg-primary text-white p-2 rounded-3 flex-shrink-0">
+            <div className="bg-white/10 text-white p-2 rounded-3 flex-shrink-0">
               <Briefcase size={18} />
             </div>
             <div>
               <strong className="text-white small d-block">
                 Master Admin Mode Active (Customer Experience View)
               </strong>
-              <span className="text-secondary small" style={{ fontSize: '0.78rem' }}>
+              <span className="text-slate-400 small" style={{ fontSize: '0.78rem' }}>
                 You have dual-dashboard clearance. You can inspect customer orders or return to the
                 full ERP/CRM suite.
               </span>
@@ -123,7 +123,7 @@ export const CustomerPortalPage: React.FC<CustomerPortalPageProps> = ({
           </div>
           <button
             onClick={onSwitchToAdmin}
-            className="btn btn-primary btn-sm rounded-pill px-3.5 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-sm text-nowrap"
+            className="btn btn-light btn-sm rounded-pill px-3.5 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-sm text-nowrap text-slate-950"
           >
             Open Admin ERP/CRM Console <ArrowRight size={14} />
           </button>
@@ -411,21 +411,27 @@ export const CustomerPortalPage: React.FC<CustomerPortalPageProps> = ({
 
               <div className="p-3 bg-light rounded-3 border border-hairline mb-4">
                 <div className="d-flex justify-content-between align-items-center mb-1 small">
-                  <span className="fw-semibold text-dark">Progress to Atelier Platinum</span>
-                  <span className="text-muted">1,450 / 2,000 pts</span>
+                  <span className="fw-semibold text-dark">Progress to Next Atelier Privilege</span>
+                  <span className="text-muted tabular-nums">
+                    {user.loyaltyPoints.toLocaleString()} / 2,000 pts
+                  </span>
                 </div>
                 <div className="progress" style={{ height: '6px' }}>
                   <div
                     className="progress-bar bg-dark"
                     role="progressbar"
-                    style={{ width: '72%' }}
-                    aria-valuenow={72}
+                    style={{
+                      width: `${Math.min(100, Math.round((user.loyaltyPoints / 2000) * 100))}%`,
+                    }}
+                    aria-valuenow={Math.min(100, Math.round((user.loyaltyPoints / 2000) * 100))}
                     aria-valuemin={0}
                     aria-valuemax={100}
                   ></div>
                 </div>
                 <span className="text-muted mt-1 d-block" style={{ fontSize: '0.72rem' }}>
-                  Earn 550 more points to unlock dedicated concierge phone support.
+                  {user.loyaltyPoints >= 2000
+                    ? 'Congratulations! You have reached Atelier Platinum tier.'
+                    : `Earn ${Math.max(0, 2000 - user.loyaltyPoints).toLocaleString()} more points to unlock dedicated concierge styling.`}
                 </span>
               </div>
 

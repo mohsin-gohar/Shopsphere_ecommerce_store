@@ -34,14 +34,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onOrderComplete,
 }) => {
   const [customer, setCustomer] = useState<CustomerInfo>(() => ({
-    fullName: currentUser?.name || 'Mohsin Gohar',
-    email: currentUser?.email || 'mohsingohar759@gmail.com',
-    phone: currentUser?.phone || '+92 300 1234567',
-    address: currentUser?.address || 'Street 4, Sector G-11/3',
-    city: currentUser?.city || 'Islamabad',
-    postalCode: currentUser?.postalCode || '44000',
+    fullName: currentUser?.name || '',
+    email: currentUser?.email || '',
+    phone: currentUser?.phone || '',
+    address: currentUser?.address || '',
+    city: currentUser?.city || '',
+    postalCode: currentUser?.postalCode || '',
     paymentMethod: 'cod',
-    notes: 'Please call upon delivery.',
+    notes: '',
   }));
 
   const [submitting, setSubmitting] = useState(false);
@@ -140,6 +140,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       className="modal show d-block"
       style={{ backgroundColor: 'rgba(15, 23, 42, 0.75)', zIndex: 1085 }}
       tabIndex={-1}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="checkout-modal-title"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleModalClose();
       }}
@@ -148,7 +151,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         <div className="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
           {/* Header */}
           <div className="modal-header border-bottom bg-light py-3 px-4">
-            <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+            <h5 id="checkout-modal-title" className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
               <ShoppingBag size={20} className="text-primary" />
               {completedOrder ? 'Order Confirmation Receipt' : 'Secure Checkout'}
             </h5>
@@ -388,14 +391,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     </div>
 
                     <h6 className="fw-bold text-dark mb-3 mt-4 d-flex align-items-center gap-2">
-                      <CreditCard size={18} className="text-primary" /> Payment Method
+                      <CreditCard size={18} className="text-dark" /> Payment Method
                     </h6>
 
                     <div className="d-flex flex-column gap-2 mb-3">
                       <label
                         className={`card p-3 border rounded-3 cursor-pointer d-flex flex-row align-items-center justify-content-between ${
                           customer.paymentMethod === 'cod'
-                            ? 'border-primary bg-primary-subtle'
+                            ? 'border-dark bg-slate-100'
                             : 'bg-light'
                         }`}
                         style={{ cursor: 'pointer' }}
@@ -423,7 +426,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       <label
                         className={`card p-3 border rounded-3 cursor-pointer d-flex flex-row align-items-center justify-content-between ${
                           customer.paymentMethod === 'card'
-                            ? 'border-primary bg-primary-subtle'
+                            ? 'border-dark bg-slate-100'
                             : 'bg-light'
                         }`}
                         style={{ cursor: 'pointer' }}
@@ -451,7 +454,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       <label
                         className={`card p-3 border rounded-3 cursor-pointer d-flex flex-row align-items-center justify-content-between ${
                           customer.paymentMethod === 'jazzcash'
-                            ? 'border-primary bg-primary-subtle'
+                            ? 'border-dark bg-slate-100'
                             : 'bg-light'
                         }`}
                         style={{ cursor: 'pointer' }}
@@ -512,7 +515,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                                 </span>
                               </div>
                             </div>
-                            <span className="fw-bold text-dark">
+                            <span className="fw-bold text-dark tabular-nums">
                               ${item.product.price * item.quantity}
                             </span>
                           </div>
@@ -577,12 +580,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       <div className="border-top pt-2 small d-flex flex-column gap-1 mb-3">
                         <div className="d-flex justify-content-between text-muted">
                           <span>Subtotal</span>
-                          <span>${subtotal.toFixed(2)}</span>
+                          <span className="tabular-nums">${subtotal.toFixed(2)}</span>
                         </div>
                         {discount > 0 && (
                           <div className="d-flex justify-content-between text-success">
                             <span>Promo Discount</span>
-                            <span>-${discount.toFixed(2)}</span>
+                            <span className="tabular-nums">-${discount.toFixed(2)}</span>
                           </div>
                         )}
                         <div className="d-flex justify-content-between text-muted">
@@ -591,11 +594,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         </div>
                         <div className="d-flex justify-content-between text-muted">
                           <span>Estimated Tax</span>
-                          <span>${tax.toFixed(2)}</span>
+                          <span className="tabular-nums">${tax.toFixed(2)}</span>
                         </div>
                         <div className="d-flex justify-content-between border-top pt-2 mt-1 fw-bold fs-6">
                           <span>Total to Pay</span>
-                          <span className="text-primary">${total.toFixed(2)}</span>
+                          <span className="text-dark tabular-nums">${total.toFixed(2)}</span>
                         </div>
                       </div>
 
@@ -607,7 +610,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       <button
                         type="submit"
                         disabled={submitting || items.length === 0}
-                        className="btn btn-primary w-100 rounded-pill py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                        className="btn btn-dark w-100 rounded-pill py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
                       >
                         {submitting ? (
                           <>

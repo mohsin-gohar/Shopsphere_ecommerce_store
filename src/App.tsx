@@ -143,7 +143,14 @@ export default function App() {
   const [isAssignmentInfoOpen, setIsAssignmentInfoOpen] = useState<boolean>(false);
 
   // Promo code & Toasts
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(() => {
+    try {
+      const saved = localStorage.getItem('shopsphere_applied_coupon_v1');
+      return saved ? saved : null;
+    } catch {
+      return null;
+    }
+  });
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
 
@@ -198,6 +205,18 @@ export default function App() {
     }
   }, [cart]);
 
+  // Persist applied coupon to localStorage
+  useEffect(() => {
+    try {
+      if (appliedCoupon) {
+        localStorage.setItem('shopsphere_applied_coupon_v1', appliedCoupon);
+      } else {
+        localStorage.removeItem('shopsphere_applied_coupon_v1');
+      }
+    } catch (err) {
+      console.error('Failed to persist coupon:', err);
+    }
+  }, [appliedCoupon]);
   // Persist wishlist to localStorage
   useEffect(() => {
     try {
@@ -266,23 +285,19 @@ export default function App() {
 
   // Cart operations
   const handleAddToCart = (product: Product, quantity = 1) => {
-    setCart((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
-      if (existing) {
-        addToast(
-          'Cart Updated',
-          `Increased quantity of ${product.name} to ${existing.quantity + quantity}.`,
-          'success'
-        );
-        return prev.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      }
+    const existing = cart.find((item) => item.product.id === product.id);
+    if (existing) {
+      const nextQuantity = existing.quantity + quantity;
+      setCart((prev) =>
+        prev.map((item) =>
+          item.product.id === product.id ? { ...item, quantity: nextQuantity } : item
+        )
+      );
+      addToast('Cart Updated', `Increased quantity of ${product.name} to ${nextQuantity}.`, 'success');
+    } else {
+      setCart((prev) => [...prev, { product, quantity }]);
       addToast('Added to Bag', `${product.name} added to your shopping bag.`, 'success');
-      return [...prev, { product, quantity }];
-    });
+    }
   };
 
   const handleUpdateCartQuantity = (productId: number, quantity: number) => {
@@ -318,16 +333,15 @@ export default function App() {
 
   // Wishlist actions
   const handleToggleWishlist = (product: Product) => {
-    setWishlist((prev) => {
-      const exists = prev.includes(product.id);
-      if (exists) {
-        addToast('Wishlist', `${product.name} removed.`, 'info');
-        return prev.filter((id) => id !== product.id);
-      } else {
-        addToast('Saved', `${product.name} added to your wishlist.`, 'success');
-        return [...prev, product.id];
-      }
-    });
+    const exists = wishlist.includes(product.id);
+    setWishlist((prev) =>
+      exists ? prev.filter((id) => id !== product.id) : [...prev, product.id]
+    );
+    if (exists) {
+      addToast('Wishlist', `${product.name} removed.`, 'info');
+    } else {
+      addToast('Saved', `${product.name} added to your wishlist.`, 'success');
+    }
   };
 
   const handleRemoveFromWishlist = (product: Product) => {
@@ -417,6 +431,27 @@ export default function App() {
   };
 
   const handleUpdateUser = (updatedUser: AuthUser) => {
+    const previousEmail = currentUser?.email;
+    if (previousEmail && previousEmail !== updatedUser.email) {
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.customer.email === previousEmail
+            ? {
+                ...order,
+                customer: {
+                  ...order.customer,
+                  fullName: updatedUser.name,
+                  email: updatedUser.email,
+                  phone: updatedUser.phone,
+                  address: updatedUser.address,
+                  city: updatedUser.city,
+                  postalCode: updatedUser.postalCode,
+                },
+              }
+            : order
+        )
+      );
+    }
     setCurrentUser(updatedUser);
     addToast('Profile Saved', 'Your address & account preferences have been updated.', 'success');
   };

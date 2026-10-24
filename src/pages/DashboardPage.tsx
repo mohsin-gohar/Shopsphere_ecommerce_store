@@ -32,6 +32,7 @@ import {
   ShieldCheck,
   Printer,
   ChevronRight,
+  ChevronLeft,
   UserCheck,
   UserX,
   UserPlus,
@@ -89,6 +90,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('All');
   const [inventorySearch, setInventorySearch] = useState('');
   const [inventoryCategoryFilter, setInventoryCategoryFilter] = useState('All');
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const inventoryItemsPerPage = 15;
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('All');
 
@@ -287,8 +290,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return orders.filter((o) => {
       const matchesSearch =
         o.id.toLowerCase().includes(orderSearch.toLowerCase()) ||
-        o.customer.fullName.toLowerCase().includes(orderSearch.toLowerCase()) ||
-        o.customer.email.toLowerCase().includes(orderSearch.toLowerCase()) ||
+        (o.customer?.fullName || '').toLowerCase().includes(orderSearch.toLowerCase()) ||
+        (o.customer?.email || '').toLowerCase().includes(orderSearch.toLowerCase()) ||
         (o.trackingNumber && o.trackingNumber.toLowerCase().includes(orderSearch.toLowerCase())) ||
         (o.carrier && o.carrier.toLowerCase().includes(orderSearch.toLowerCase()));
 
@@ -314,6 +317,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     });
   }, [products, inventorySearch, inventoryCategoryFilter]);
 
+  // Reset inventory page when filters change
+  useEffect(() => {
+    setInventoryPage(1);
+  }, [inventorySearch, inventoryCategoryFilter]);
+
+  const totalInventoryPages = Math.max(1, Math.ceil(filteredProducts.length / inventoryItemsPerPage));
+  const paginatedInventoryProducts = useMemo(() => {
+    const start = (inventoryPage - 1) * inventoryItemsPerPage;
+    return filteredProducts.slice(start, start + inventoryItemsPerPage);
+  }, [filteredProducts, inventoryPage, inventoryItemsPerPage]);
+
   // Filtered Users
   const filteredUsers = useMemo(() => {
     return usersList.filter((u) => {
@@ -333,9 +347,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const categoryRevenue = useMemo(() => {
     const revenue: Record<string, number> = {};
     orders.forEach((order) => {
-      order.items.forEach((item) => {
-        const category = item.product.category || 'Other';
-        revenue[category] = (revenue[category] || 0) + item.product.price * item.quantity;
+      (order.items || []).forEach((item) => {
+        const category = item?.product?.category || 'Other';
+        const amount = (typeof item?.product?.price === 'number' ? item.product.price : 0) * (typeof item?.quantity === 'number' ? item.quantity : 0);
+        revenue[category] = (revenue[category] || 0) + amount;
       });
     });
     return revenue;
@@ -351,14 +366,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       ['Order ID', 'Customer', 'Email', 'Status', 'Items', 'Subtotal', 'Discount', 'Shipping', 'Total', 'Date'],
       ...filteredOrders.map((order) => [
         order.id,
-        order.customer.fullName,
-        order.customer.email,
+        order.customer?.fullName || '',
+        order.customer?.email || '',
         order.status,
-        order.items.map((item) => `${item.product.name} x${item.quantity}`).join('; '),
-        order.subtotal.toFixed(2),
-        order.discount.toFixed(2),
-        order.shipping.toFixed(2),
-        order.total.toFixed(2),
+        order.items.map((item) => `${item.product?.name || 'Item'} x${item.quantity}`).join('; '),
+        Number.isFinite(order.subtotal) ? order.subtotal.toFixed(2) : '0.00',
+        Number.isFinite(order.discount) ? order.discount.toFixed(2) : '0.00',
+        Number.isFinite(order.shipping) ? order.shipping.toFixed(2) : '0.00',
+        Number.isFinite(order.total) ? order.total.toFixed(2) : '0.00',
         order.date,
       ]),
     ];
@@ -946,7 +961,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredProducts.map((p) => (
+                {paginatedInventoryProducts.map((p) => (
                   <tr key={p.id}>
                     <td>
                       <div className="flex items-center gap-3">
@@ -1014,6 +1029,40 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </tbody>
             </table>
           </div>
+
+          {/* Inventory Pagination Bar */}
+          {totalInventoryPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 mt-3 border-t border-slate-100 text-xs text-slate-600">
+              <div>
+                Showing{' '}
+                <strong className="text-slate-900 tabular-nums">
+                  {(inventoryPage - 1) * inventoryItemsPerPage + 1}–{Math.min(inventoryPage * inventoryItemsPerPage, filteredProducts.length)}
+                </strong>{' '}
+                of <strong className="text-slate-900 tabular-nums">{filteredProducts.length}</strong> inventory SKUs
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={inventoryPage === 1}
+                  onClick={() => setInventoryPage((prev) => Math.max(1, prev - 1))}
+                  className="btn btn-light border border-slate-200 btn-sm rounded-pill px-3 py-1 text-xs font-semibold disabled:opacity-40"
+                >
+                  <ChevronLeft size={13} className="d-inline me-1" /> Prev
+                </button>
+                <span className="px-2 font-bold text-slate-800">
+                  Page {inventoryPage} of {totalInventoryPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={inventoryPage === totalInventoryPages}
+                  onClick={() => setInventoryPage((prev) => Math.min(totalInventoryPages, prev + 1))}
+                  className="btn btn-light border border-slate-200 btn-sm rounded-pill px-3 py-1 text-xs font-semibold disabled:opacity-40"
+                >
+                  Next <ChevronRight size={13} className="d-inline ms-1" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
