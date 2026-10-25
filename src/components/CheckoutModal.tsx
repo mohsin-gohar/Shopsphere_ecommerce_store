@@ -551,6 +551,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                                 alt={item.product.name}
                                 className="rounded object-fit-cover"
                                 style={{ width: '36px', height: '36px' }}
+                                loading="lazy"
+                                decoding="async"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).src =
                                     'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80';

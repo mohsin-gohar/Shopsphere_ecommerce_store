@@ -311,7 +311,9 @@ export const CustomerPortalPage: React.FC<CustomerPortalPageProps> = ({
                               alt={i.product.name}
                               className="rounded object-fit-cover"
                               style={{ width: '30px', height: '30px' }}
-                            />
+                            loading="lazy"
+                               decoding="async"
+                             />
                             <span className="small text-dark fw-medium text-truncate" style={{ maxWidth: '140px' }}>
                               {i.product.name}
                             </span>
@@ -366,7 +368,9 @@ export const CustomerPortalPage: React.FC<CustomerPortalPageProps> = ({
                       alt={p.name}
                       className="rounded-2 object-fit-cover w-100 mb-2"
                       style={{ height: '160px' }}
-                    />
+                    loading="lazy"
+                               decoding="async"
+                             />
                     <div className="text-muted text-uppercase small" style={{ fontSize: '0.7rem' }}>
                       {p.category}
                     </div>

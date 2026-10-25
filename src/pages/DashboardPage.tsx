@@ -832,7 +832,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                               src={item.product.image}
                               alt=""
                               className="w-7 h-7 rounded-md object-cover border"
-                            />
+                            loading="lazy"
+                               decoding="async"
+                             />
                           ))}
                           <span className="text-slate-600 font-semibold text-2xs">
                             {ord.items.reduce((s, it) => s + it.quantity, 0)} pcs
@@ -969,7 +971,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           src={p.image}
                           alt={p.name}
                           className="w-10 h-10 rounded-xl object-cover border"
-                        />
+                        loading="lazy"
+                               decoding="async"
+                             />
                         <div>
                           <div className="font-bold text-slate-900">{p.name}</div>
                           <span className="text-slate-400 text-2xs font-mono">SKU #{p.id}</span>
@@ -1512,7 +1516,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               {selectedOrderDetails.items.map((it, i) => (
                 <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b">
                   <div className="flex items-center gap-2">
-                    <img src={it.product.image} alt="" className="w-8 h-8 rounded object-cover" />
+                    <img src={it.product.image} alt="" className="w-8 h-8 rounded object-cover" loading="lazy"
+                               decoding="async"
+                             />
                     <div>
                       <span className="font-bold text-slate-900">{it.product.name}</span>
                       <span className="text-slate-400 text-2xs block">Qty: {it.quantity}</span>

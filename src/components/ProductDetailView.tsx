@@ -183,6 +183,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                       alt={`${product.name} angle ${idx + 1}`}
                       className="w-full h-full object-cover"
                       loading="lazy"
+                      decoding="async"
                     />
                   </button>
                 ))}
@@ -198,6 +199,8 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                   }
                   alt={product.name}
                   className="w-full h-[380px] sm:h-[480px] object-cover transition-transform duration-500 group-hover:scale-104"
+                  loading="lazy"
+                  decoding="async"
                   onError={() => setImageError(true)}
                 />
 
@@ -588,6 +591,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                         alt={rel.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
+                        decoding="async"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = fallbackImg;
                         }}

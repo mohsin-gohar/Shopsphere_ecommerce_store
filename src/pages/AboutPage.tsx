@@ -145,6 +145,8 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onExploreShop }) => {
                   alt="Tailored craft"
                   className="w-100 rounded-3 object-fit-cover shadow-2xs"
                   style={{ height: '220px' }}
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
               <div className="col-6">
@@ -153,6 +155,8 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onExploreShop }) => {
                   alt="Minimal drape dress"
                   className="w-100 rounded-3 object-fit-cover shadow-2xs"
                   style={{ height: '220px' }}
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
               <div className="col-12">
@@ -161,6 +165,8 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onExploreShop }) => {
                   alt="Leather Sneaker Craft"
                   className="w-100 rounded-3 object-fit-cover shadow-2xs"
                   style={{ height: '180px' }}
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
             </div>

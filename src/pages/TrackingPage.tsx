@@ -392,6 +392,7 @@ export const TrackingPage: React.FC<TrackingPageProps> = ({ orders, onExploreSho
                       className="rounded-2 object-fit-cover"
                       style={{ width: '56px', height: '56px' }}
                       loading="lazy"
+                      decoding="async"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src =
                           'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80';
