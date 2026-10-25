@@ -48,6 +48,24 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [promoInput, setPromoInput] = useState('');
   const [promoMessage, setPromoMessage] = useState<{ text: string; success: boolean } | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<keyof CustomerInfo, string>>>({});
+
+  const validateCustomer = () => {
+    const next: Partial<Record<keyof CustomerInfo, string>> = {};
+    if (!customer.fullName.trim()) next.fullName = 'Full name is required';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email.trim())) {
+      next.email = 'Enter a valid email address';
+    }
+    if (customer.phone.trim().length < 7) next.phone = 'Enter a valid phone number';
+    if (!customer.address.trim()) next.address = 'Street address is required';
+    if (!customer.city.trim()) next.city = 'City is required';
+    if (!/^\d{4,10}$/.test(customer.postalCode.trim())) {
+      next.postalCode = 'Enter a valid postal code';
+    }
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
 
   // Sync if currentUser changes
   React.useEffect(() => {
@@ -99,6 +117,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateCustomer()) return;
+
     setSubmitting(true);
 
     setTimeout(() => {
@@ -310,13 +330,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         <input
                           type="text"
                           required
-                          className="form-control"
+                          className={`form-control ${errors.fullName ? 'is-invalid' : ''}`}
                           value={customer.fullName}
-                          onChange={(e) =>
-                            setCustomer({ ...customer, fullName: e.target.value })
-                          }
+                          aria-invalid={!!errors.fullName}
+                          onChange={(e) => {
+                            setCustomer({ ...customer, fullName: e.target.value });
+                            setErrors((prev) => ({ ...prev, fullName: undefined }));
+                          }}
                           placeholder="Your full name"
                         />
+                        {errors.fullName && (
+                          <div className="invalid-feedback d-block">{errors.fullName}</div>
+                        )}
                       </div>
 
                       <div className="col-sm-6">
@@ -324,13 +349,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         <input
                           type="email"
                           required
-                          className="form-control"
+                          className={`form-control ${errors.email ? 'is-invalid' : ''}`}
                           value={customer.email}
-                          onChange={(e) =>
-                            setCustomer({ ...customer, email: e.target.value })
-                          }
+                          aria-invalid={!!errors.email}
+                          onChange={(e) => {
+                            setCustomer({ ...customer, email: e.target.value });
+                            setErrors((prev) => ({ ...prev, email: undefined }));
+                          }}
                           placeholder="you@example.com"
                         />
+                        {errors.email && (
+                          <div className="invalid-feedback d-block">{errors.email}</div>
+                        )}
                       </div>
 
                       <div className="col-sm-6">
@@ -338,13 +368,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         <input
                           type="tel"
                           required
-                          className="form-control"
+                          className={`form-control ${errors.phone ? 'is-invalid' : ''}`}
                           value={customer.phone}
-                          onChange={(e) =>
-                            setCustomer({ ...customer, phone: e.target.value })
-                          }
+                          aria-invalid={!!errors.phone}
+                          onChange={(e) => {
+                            setCustomer({ ...customer, phone: e.target.value });
+                            setErrors((prev) => ({ ...prev, phone: undefined }));
+                          }}
                           placeholder="+92 300 1234567"
                         />
+                        {errors.phone && (
+                          <div className="invalid-feedback d-block">{errors.phone}</div>
+                        )}
                       </div>
 
                       <div className="col-12">
@@ -352,13 +387,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         <input
                           type="text"
                           required
-                          className="form-control"
+                          className={`form-control ${errors.address ? 'is-invalid' : ''}`}
                           value={customer.address}
-                          onChange={(e) =>
-                            setCustomer({ ...customer, address: e.target.value })
-                          }
+                          aria-invalid={!!errors.address}
+                          onChange={(e) => {
+                            setCustomer({ ...customer, address: e.target.value });
+                            setErrors((prev) => ({ ...prev, address: undefined }));
+                          }}
                           placeholder="House/Apartment #, Street, Area"
                         />
+                        {errors.address && (
+                          <div className="invalid-feedback d-block">{errors.address}</div>
+                        )}
                       </div>
 
                       <div className="col-sm-7">
@@ -366,13 +406,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         <input
                           type="text"
                           required
-                          className="form-control"
+                          className={`form-control ${errors.city ? 'is-invalid' : ''}`}
                           value={customer.city}
-                          onChange={(e) =>
-                            setCustomer({ ...customer, city: e.target.value })
-                          }
+                          aria-invalid={!!errors.city}
+                          onChange={(e) => {
+                            setCustomer({ ...customer, city: e.target.value });
+                            setErrors((prev) => ({ ...prev, city: undefined }));
+                          }}
                           placeholder="e.g. Islamabad, Lahore, Karachi"
                         />
+                        {errors.city && (
+                          <div className="invalid-feedback d-block">{errors.city}</div>
+                        )}
                       </div>
 
                       <div className="col-sm-5">
@@ -380,13 +425,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         <input
                           type="text"
                           required
-                          className="form-control"
+                          className={`form-control ${errors.postalCode ? 'is-invalid' : ''}`}
                           value={customer.postalCode}
-                          onChange={(e) =>
-                            setCustomer({ ...customer, postalCode: e.target.value })
-                          }
+                          aria-invalid={!!errors.postalCode}
+                          onChange={(e) => {
+                            setCustomer({ ...customer, postalCode: e.target.value });
+                            setErrors((prev) => ({ ...prev, postalCode: undefined }));
+                          }}
                           placeholder="44000"
                         />
+                        {errors.postalCode && (
+                          <div className="invalid-feedback d-block">{errors.postalCode}</div>
+                        )}
                       </div>
                     </div>
 

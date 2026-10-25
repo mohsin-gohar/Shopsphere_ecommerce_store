@@ -183,6 +183,13 @@ export async function fetchProducts(): Promise<{ data: Product[]; source: 'api' 
       'fragrances',
       'skin-care',
       'sports-accessories',
+      'table',
+      'chair',
+      'lamp',
+      'sieve',
+      'laptop',
+      'notebook',
+      'computer',
     ];
     const fashionFallback = FALLBACK_PRODUCTS.filter((product) => {
       const image = (product.image || '').toLowerCase();

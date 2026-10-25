@@ -24,9 +24,29 @@ export const ContactPage: React.FC<ContactPageProps> = ({
 
   const [submitting, setSubmitting] = useState(false);
   const [submittedTicket, setSubmittedTicket] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<'fullName' | 'email' | 'phone' | 'message', string>>>({});
+
+  const validateContact = () => {
+    const next: Partial<Record<'fullName' | 'email' | 'phone' | 'message', string>> = {};
+    if (!formData.fullName.trim()) next.fullName = 'Full name is required';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      next.email = 'Enter a valid email address';
+    }
+    if (formData.phone.trim() && formData.phone.trim().length < 7) {
+      next.phone = 'Enter a valid phone number';
+    }
+    if (formData.message.trim().length < 10) {
+      next.message = 'Please enter at least 10 characters';
+    }
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateContact()) return;
+
     setSubmitting(true);
 
     setTimeout(() => {
@@ -51,6 +71,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({
       message: '',
     });
     setSubmittedTicket(null);
+    setErrors({});
   };
 
   return (
@@ -104,10 +125,15 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                       type="text"
                       required
                       placeholder="e.g. Mohsin Gohar"
-                      className="form-control bg-light border-hairline"
+                      className={`form-control bg-light border-hairline ${errors.fullName ? 'is-invalid' : ''}`}
                       value={formData.fullName}
-                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                      aria-invalid={!!errors.fullName}
+                      onChange={(e) => {
+                        setFormData({ ...formData, fullName: e.target.value });
+                        setErrors((prev) => ({ ...prev, fullName: undefined }));
+                      }}
                     />
+                    {errors.fullName && <div className="invalid-feedback d-block">{errors.fullName}</div>}
                   </div>
 
                   <div className="col-sm-6">
@@ -116,10 +142,15 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                       type="email"
                       required
                       placeholder="you@example.com"
-                      className="form-control bg-light border-hairline"
+                      className={`form-control bg-light border-hairline ${errors.email ? 'is-invalid' : ''}`}
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      aria-invalid={!!errors.email}
+                      onChange={(e) => {
+                        setFormData({ ...formData, email: e.target.value });
+                        setErrors((prev) => ({ ...prev, email: undefined }));
+                      }}
                     />
+                    {errors.email && <div className="invalid-feedback d-block">{errors.email}</div>}
                   </div>
 
                   <div className="col-sm-6">
@@ -127,10 +158,15 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                     <input
                       type="tel"
                       placeholder="+92 300 1234567"
-                      className="form-control bg-light border-hairline"
+                      className={`form-control bg-light border-hairline ${errors.phone ? 'is-invalid' : ''}`}
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      aria-invalid={!!errors.phone}
+                      onChange={(e) => {
+                        setFormData({ ...formData, phone: e.target.value });
+                        setErrors((prev) => ({ ...prev, phone: undefined }));
+                      }}
                     />
+                    {errors.phone && <div className="invalid-feedback d-block">{errors.phone}</div>}
                   </div>
 
                   <div className="col-sm-6">
@@ -167,10 +203,15 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                       required
                       rows={4}
                       placeholder="Tell us how we can help with your wardrobe or inquiry..."
-                      className="form-control bg-light border-hairline"
+                      className={`form-control bg-light border-hairline ${errors.message ? 'is-invalid' : ''}`}
                       value={formData.message}
-                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                      aria-invalid={!!errors.message}
+                      onChange={(e) => {
+                        setFormData({ ...formData, message: e.target.value });
+                        setErrors((prev) => ({ ...prev, message: undefined }));
+                      }}
                     ></textarea>
+                    {errors.message && <div className="invalid-feedback d-block">{errors.message}</div>}
                   </div>
 
                   <div className="col-12 pt-2">
