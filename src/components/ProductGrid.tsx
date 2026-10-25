@@ -44,7 +44,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   // Find highest price for slider max
   const maxAvailablePrice = useMemo(() => {
     if (products.length === 0) return 200;
-    return Math.max(...products.map((p) => p.price));
+    return Math.max(...products.map((p) => Number(p?.price) || 0));
   }, [products]);
 
   // Unique badges from products
@@ -71,30 +71,30 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
       .filter((product) => {
         if (
           filters.category !== 'All' &&
-          product.category.toLowerCase() !== filters.category.toLowerCase()
+          (product?.category || '').toLowerCase() !== filters.category.toLowerCase()
         ) {
           return false;
         }
 
         if (filters.search.trim()) {
           const query = filters.search.toLowerCase();
-          const matchesName = product.name.toLowerCase().includes(query);
-          const matchesDesc = product.short_desc.toLowerCase().includes(query);
-          const matchesCategory = product.category.toLowerCase().includes(query);
+          const matchesName = (product?.name || '').toLowerCase().includes(query);
+          const matchesDesc = (product?.short_desc || '').toLowerCase().includes(query);
+          const matchesCategory = (product?.category || '').toLowerCase().includes(query);
           if (!matchesName && !matchesDesc && !matchesCategory) {
             return false;
           }
         }
 
-        if (product.price > filters.maxPrice) {
+        if ((Number(product?.price) || 0) > filters.maxPrice) {
           return false;
         }
 
-        if (filters.minRating > 0 && product.rating < filters.minRating) {
+        if (filters.minRating > 0 && (Number(product?.rating) || 0) < filters.minRating) {
           return false;
         }
 
-        if (filters.badge !== 'All' && product.badge !== filters.badge) {
+        if (filters.badge !== 'All' && product?.badge !== filters.badge) {
           return false;
         }
 
@@ -103,20 +103,20 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
       .sort((a, b) => {
         switch (filters.sortBy) {
           case 'price-low':
-            return a.price - b.price;
+            return (Number(a?.price) || 0) - (Number(b?.price) || 0);
           case 'price-high':
-            return b.price - a.price;
+            return (Number(b?.price) || 0) - (Number(a?.price) || 0);
           case 'rating':
-            return b.rating - a.rating;
+            return (Number(b?.rating) || 0) - (Number(a?.rating) || 0);
           case 'reviews':
-            return b.reviews - a.reviews;
+            return (Number(b?.reviews) || 0) - (Number(a?.reviews) || 0);
           case 'discount': {
-            const discA = a.oldPrice ? a.oldPrice - a.price : 0;
-            const discB = b.oldPrice ? b.oldPrice - b.price : 0;
+            const discA = a?.oldPrice ? Number(a.oldPrice) - Number(a.price || 0) : 0;
+            const discB = b?.oldPrice ? Number(b.oldPrice) - Number(b.price || 0) : 0;
             return discB - discA;
           }
           default:
-            return a.id - b.id;
+            return (Number(a?.id) || 0) - (Number(b?.id) || 0);
         }
       });
   }, [products, filters]);

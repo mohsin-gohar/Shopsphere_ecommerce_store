@@ -49,7 +49,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({
         {/* Editorial Portrait Photo Container */}
         <div className="product-card-img-container relative overflow-hidden bg-slate-100">
           <img
-            src={imageError ? fallbackImg : product.image}
+            src={imageError || !product?.image ? fallbackImg : product.image}
             alt={product.name}
             className="product-card-img w-full h-full object-cover"
             loading="lazy"

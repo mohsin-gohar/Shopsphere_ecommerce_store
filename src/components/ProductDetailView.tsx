@@ -55,7 +55,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
 
   // Realistic alternate gallery photos
   const galleryImages = [
-    product.image,
+    product?.image || fallbackImg,
     'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1000&q=85',
     'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1000&q=85',
     'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1000&q=85',

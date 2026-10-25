@@ -109,7 +109,7 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
               >
                 <div className="position-absolute top-0 end-0 bottom-0 w-40 opacity-20 overflow-hidden">
                   <img
-                    src={cat.image}
+                    src={cat?.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80'}
                     alt={cat.name}
                     className="w-100 h-100 object-fit-cover"
                     loading="lazy"
