@@ -73,7 +73,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onSelectCategory, on
                   Seasonal Private Preview &amp; Lookbooks
                 </span>
               </div>
-              <h3 className="fw-black text-white tracking-tight mb-2" style={{ letterSpacing: '-0.02em' }}>
+              <h3 className="font-black text-white tracking-tight mb-2" style={{ letterSpacing: '-0.02em' }}>
                 Join the ShopSphere Atelier Club
               </h3>
               <p className="text-slate-400 small mb-0" style={{ maxWidth: '520px', lineHeight: '1.6' }}>
@@ -211,7 +211,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onSelectCategory, on
                 <ShoppingBag size={17} className="text-slate-900" />
               </div>
               <div className="d-flex flex-column text-start">
-                <span className="fs-5 fw-extrabold text-white tracking-tight lh-1" style={{ letterSpacing: '-0.02em' }}>
+                <span className="fs-5 font-extrabold text-white tracking-tight lh-1" style={{ letterSpacing: '-0.02em' }}>
                   ShopSphere
                 </span>
                 <span className="text-slate-500 fw-bold" style={{ fontSize: '0.58rem', letterSpacing: '0.12em' }}>

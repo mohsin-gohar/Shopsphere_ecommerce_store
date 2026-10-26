@@ -48,7 +48,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
             >
               <Lock size={26} />
             </div>
-            <h3 className="fw-extrabold text-dark tracking-tight mb-1">Admin Portal</h3>
+            <h3 className="font-extrabold text-dark tracking-tight mb-1">Admin Portal</h3>
             <p className="text-secondary small mb-0">
               Enter authorized administrator credentials to manage orders, inventory, and sales KPIs.
             </p>

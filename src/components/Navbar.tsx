@@ -95,7 +95,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <ShoppingBag size={20} className="text-white" />
             </div>
             <div className="d-flex flex-column text-start">
-              <span className="fs-4 fw-extrabold tracking-tight text-slate-900 whitespace-nowrap lh-1" style={{ letterSpacing: '-0.03em' }}>
+              <span className="fs-4 font-extrabold tracking-tight text-slate-900 whitespace-nowrap lh-1" style={{ letterSpacing: '-0.03em' }}>
                 ShopSphere
               </span>
               <span className="text-slate-500 fw-bold" style={{ fontSize: '0.62rem', letterSpacing: '0.12em' }}>

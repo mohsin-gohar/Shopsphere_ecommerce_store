@@ -192,7 +192,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <div className="bg-success-subtle text-success p-3 rounded-circle d-inline-block mb-3">
                   <CheckCircle2 size={48} />
                 </div>
-                <h3 className="fw-extrabold text-dark mb-1">Thank You for Your Order!</h3>
+                <h3 className="font-extrabold text-dark mb-1">Thank You for Your Order!</h3>
                 <p className="text-muted small mb-4">
                   Your order has been confirmed and is being prepped for dispatch.
                 </p>

@@ -117,7 +117,7 @@ export const CartOffcanvas: React.FC<CartOffcanvasProps> = ({
               <ShoppingBag size={18} />
             </div>
             <div>
-              <h5 id="cart-drawer-title" className="fw-black mb-0 text-slate-950 tracking-tight">Your Shopping Bag</h5>
+              <h5 id="cart-drawer-title" className="font-black mb-0 text-slate-950 tracking-tight">Your Shopping Bag</h5>
               <small className="text-slate-500">
                 {totalItemCount} {totalItemCount === 1 ? 'piece' : 'pieces'} selected
               </small>
@@ -344,7 +344,7 @@ export const CartOffcanvas: React.FC<CartOffcanvasProps> = ({
 
               <div className="d-flex justify-content-between border-top pt-2 mt-1">
                 <span className="fw-bold text-slate-950 fs-6">Total Amount:</span>
-                <span className="fw-black text-slate-950 fs-5 tabular-nums">${grandTotal.toFixed(2)}</span>
+                <span className="font-black text-slate-950 fs-5 tabular-nums">${grandTotal.toFixed(2)}</span>
               </div>
             </div>
 

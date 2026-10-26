@@ -112,7 +112,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                       <div className="text-slate-500" style={{ fontSize: '0.75rem' }}>
                         {product.category} Atelier
                       </div>
-                      <div className="fw-black text-slate-950 small mt-1 tabular-nums">${product.price}</div>
+                      <div className="font-black text-slate-950 small mt-1 tabular-nums">${product.price}</div>
                     </div>
                     <div className="d-flex flex-column gap-1">
                       <button

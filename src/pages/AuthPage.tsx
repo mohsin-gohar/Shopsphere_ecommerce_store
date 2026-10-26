@@ -253,7 +253,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             >
               <User size={24} />
             </div>
-            <h3 className="fw-extrabold text-dark tracking-tight mb-1">
+            <h3 className="font-extrabold text-dark tracking-tight mb-1">
               {authMode === 'signin' ? 'Welcome Back' : 'Create Account'}
             </h3>
             <p className="text-secondary small mb-0">

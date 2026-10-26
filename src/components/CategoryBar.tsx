@@ -24,7 +24,7 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
           <span className="text-slate-500 text-uppercase tracking-widest fw-bold d-block mb-0.5" style={{ fontSize: '0.68rem' }}>
             Curated Departments
           </span>
-          <h4 className="fw-black text-slate-950 mb-0 d-flex align-items-center gap-2 tracking-tight">
+          <h4 className="font-black text-slate-950 mb-0 d-flex align-items-center gap-2 tracking-tight">
             <Layers size={20} className="text-slate-900" /> Browse by Atelier Division
           </h4>
         </div>

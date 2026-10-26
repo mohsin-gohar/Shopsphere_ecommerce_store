@@ -147,7 +147,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                 <Filter size={18} />
               </div>
               <div>
-                <h5 className="fw-black mb-0 text-slate-950 tracking-tight">
+                <h5 className="font-black mb-0 text-slate-950 tracking-tight">
                   {filters.category === 'All' ? 'Curated Archive' : `${filters.category} Collection`}
                 </h5>
                 <small className="text-slate-500">

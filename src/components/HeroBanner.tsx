@@ -21,7 +21,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onExplore }) => {
                 </span>
               </div>
 
-              <h1 className="display-5 fw-black text-slate-950 tracking-tight mb-3" style={{ lineHeight: '1.12' }}>
+              <h1 className="display-5 font-black text-slate-950 tracking-tight mb-3" style={{ lineHeight: '1.12' }}>
                 Architectural Silhouette Meets Quiet Luxury.
               </h1>
 
@@ -69,17 +69,17 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onExplore }) => {
             <div className="pt-3 border-top border-slate-100 d-flex flex-wrap align-items-center justify-content-between gap-3">
               <div className="d-flex align-items-center gap-4">
                 <div>
-                  <div className="fw-black text-slate-950 tabular-nums" style={{ fontSize: '1.05rem' }}>120+</div>
+                  <div className="font-black text-slate-950 tabular-nums" style={{ fontSize: '1.05rem' }}>120+</div>
                   <div className="text-slate-500" style={{ fontSize: '0.7rem' }}>Curated Editions</div>
                 </div>
                 <div className="vr opacity-25" />
                 <div>
-                  <div className="fw-black text-slate-950 tabular-nums" style={{ fontSize: '1.05rem' }}>4.9 ★</div>
+                  <div className="font-black text-slate-950 tabular-nums" style={{ fontSize: '1.05rem' }}>4.9 ★</div>
                   <div className="text-slate-500" style={{ fontSize: '0.7rem' }}>Verified Client Score</div>
                 </div>
                 <div className="vr opacity-25" />
                 <div>
-                  <div className="fw-black text-slate-950 tabular-nums" style={{ fontSize: '1.05rem' }}>24h</div>
+                  <div className="font-black text-slate-950 tabular-nums" style={{ fontSize: '1.05rem' }}>24h</div>
                   <div className="text-slate-500" style={{ fontSize: '0.7rem' }}>Atelier Dispatch</div>
                 </div>
               </div>

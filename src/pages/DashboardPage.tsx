@@ -202,7 +202,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           typeof u === 'object' &&
           typeof u.id === 'string' &&
           typeof u.email === 'string' &&
-          typeof u.name === 'string'
+          typeof u.name === 'string' &&
+          typeof u.city === 'string' &&
+          typeof u.role === 'string' &&
+          typeof u.status === 'string' &&
+          typeof u.membershipTier === 'string' &&
+          typeof u.totalOrders === 'number' &&
+          typeof u.totalSpent === 'number'
       );
       return valid.length > 0 ? valid : DEFAULT_MANAGED_USERS;
     } catch {
@@ -289,14 +295,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
       const matchesSearch =
-        o.id.toLowerCase().includes(orderSearch.toLowerCase()) ||
-        (o.customer?.fullName || '').toLowerCase().includes(orderSearch.toLowerCase()) ||
-        (o.customer?.email || '').toLowerCase().includes(orderSearch.toLowerCase()) ||
-        (o.trackingNumber && o.trackingNumber.toLowerCase().includes(orderSearch.toLowerCase())) ||
-        (o.carrier && o.carrier.toLowerCase().includes(orderSearch.toLowerCase()));
+        (o?.id || '').toLowerCase().includes(orderSearch.toLowerCase()) ||
+        (o?.customer?.fullName || '').toLowerCase().includes(orderSearch.toLowerCase()) ||
+        (o?.customer?.email || '').toLowerCase().includes(orderSearch.toLowerCase()) ||
+        (o?.trackingNumber && o.trackingNumber.toLowerCase().includes(orderSearch.toLowerCase())) ||
+        (o?.carrier && o.carrier.toLowerCase().includes(orderSearch.toLowerCase()));
 
       const matchesStatus =
-        orderStatusFilter === 'All' || o.status === orderStatusFilter;
+        orderStatusFilter === 'All' || o?.status === orderStatusFilter;
 
       return matchesSearch && matchesStatus;
     });
@@ -306,12 +312,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       const matchesSearch =
-        p.name.toLowerCase().includes(inventorySearch.toLowerCase()) ||
-        p.category.toLowerCase().includes(inventorySearch.toLowerCase()) ||
-        (p.badge && p.badge.toLowerCase().includes(inventorySearch.toLowerCase()));
+        (p?.name || '').toLowerCase().includes(inventorySearch.toLowerCase()) ||
+        (p?.category || '').toLowerCase().includes(inventorySearch.toLowerCase()) ||
+        ((p?.badge || '') && (p.badge || '').toLowerCase().includes(inventorySearch.toLowerCase()));
 
       const matchesCategory =
-        inventoryCategoryFilter === 'All' || p.category === inventoryCategoryFilter;
+        inventoryCategoryFilter === 'All' || p?.category === inventoryCategoryFilter;
 
       return matchesSearch && matchesCategory;
     });
@@ -332,12 +338,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const filteredUsers = useMemo(() => {
     return usersList.filter((u) => {
       const matchesSearch =
-        u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-        u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
-        u.city.toLowerCase().includes(userSearch.toLowerCase());
+        (u?.name || '').toLowerCase().includes(userSearch.toLowerCase()) ||
+        (u?.email || '').toLowerCase().includes(userSearch.toLowerCase()) ||
+        (u?.city || '').toLowerCase().includes(userSearch.toLowerCase());
 
       const matchesRole =
-        userRoleFilter === 'All' || u.role === userRoleFilter;
+        userRoleFilter === 'All' || u?.role === userRoleFilter;
 
       return matchesSearch && matchesRole;
     });
@@ -390,6 +396,38 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     onShowToast('Export Complete', `${filteredOrders.length} orders exported to CSV.`, 'success');
+  };
+
+  const handleExportUsers = () => {
+    const rows = [
+      ['User ID', 'Name', 'Email', 'Phone', 'City', 'Role', 'Membership Tier', 'Status', 'Total Orders', 'Total Spent', 'Joined'],
+      ...filteredUsers.map((user) => [
+        user.id,
+        user.name,
+        user.email,
+        user.phone,
+        user.city,
+        user.role,
+        user.membershipTier,
+        user.status,
+        user.totalOrders,
+        Number.isFinite(user.totalSpent) ? user.totalSpent.toFixed(2) : '0.00',
+        user.joinedDate,
+      ]),
+    ];
+    const csv = rows
+      .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `shopsphere-users-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    onShowToast('Export Complete', `${filteredUsers.length} users exported to CSV.`, 'success');
   };
 
   // Product Operations
@@ -1109,6 +1147,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               >
                 <UserPlus size={15} /> Add User
               </button>
+              <button
+                onClick={handleExportUsers}
+                className="btn btn-outline-dark btn-sm rounded-pill px-3.5 py-2 font-semibold flex items-center gap-1.5 whitespace-nowrap"
+              >
+                <Download size={15} /> Export
+              </button>
             </div>
           </div>
 
@@ -1131,7 +1175,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <td>
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-bold flex items-center justify-center text-xs">
-                          {u.name.charAt(0)}
+                          { (u?.name || '?').charAt(0).toUpperCase() }
                         </div>
                         <div>
                           <strong className="text-slate-900 block">{u.name}</strong>
@@ -1175,7 +1219,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       </div>
                     </td>
                     <td>
-                      <strong className="text-slate-900 block font-bold">${u.totalSpent.toFixed(2)}</strong>
+                      <strong className="text-slate-900 block font-bold">${Number.isFinite(u?.totalSpent) ? u.totalSpent.toFixed(2) : '0.00'}</strong>
                       <span className="text-slate-500 text-2xs">{u.totalOrders} total orders</span>
                     </td>
                     <td className="text-end">
@@ -1366,6 +1410,89 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <span>All telemetry live via React 19 state</span>
                 <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
               </div>
+          </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+              <h6 className="font-bold text-slate-900 text-xs uppercase tracking-wider mb-4">
+                Top Selling Products
+              </h6>
+              {(() => {
+                const productSales: Record<number, { name: string; qty: number; revenue: number }> = {};
+                orders.forEach((order) => {
+                  (order.items || []).forEach((item) => {
+                    const id = item?.product?.id;
+                    if (typeof id !== 'number') return;
+                    if (!productSales[id]) {
+                      productSales[id] = {
+                        name: item.product?.name || 'Unknown Product',
+                        qty: 0,
+                        revenue: 0,
+                      };
+                    }
+                    const qty = typeof item.quantity === 'number' ? item.quantity : 0;
+                    const price = typeof item.product?.price === 'number' ? item.product.price : 0;
+                    productSales[id].qty += qty;
+                    productSales[id].revenue += qty * price;
+                  });
+                });
+                const topProducts = Object.values(productSales)
+                  .sort((a, b) => b.revenue - a.revenue)
+                  .slice(0, 5);
+                if (topProducts.length === 0) {
+                  return <p className="text-xs text-slate-500">No order data available yet.</p>;
+                }
+                return (
+                  <div className="space-y-3">
+                    {topProducts.map((product, index) => (
+                      <div key={product.name} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold">
+                            {index + 1}
+                          </span>
+                          <span className="truncate font-semibold text-slate-800">{product.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-slate-900">${product.revenue.toFixed(0)}</div>
+                          <div className="text-slate-500 text-2xs">{product.qty} sold</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+              <h6 className="font-bold text-slate-900 text-xs uppercase tracking-wider mb-4">
+                Order Status Breakdown
+              </h6>
+              {(() => {
+                const statuses = ['Confirmed', 'Processing in Studio', 'Dispatched', 'In Transit', 'Delivered'];
+                const total = orders.length || 1;
+                return (
+                  <div className="space-y-3">
+                    {statuses.map((status) => {
+                      const count = orders.filter((o) => o.status === status).length;
+                      const pct = Math.round((count / total) * 100);
+                      return (
+                        <div key={status}>
+                          <div className="flex justify-between text-xs font-semibold mb-1">
+                            <span>{status}</span>
+                            <span>
+                              {count} ({pct}%)
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                            <div className="bg-slate-900 h-full rounded-full" style={{ width: `${pct}%` }}></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

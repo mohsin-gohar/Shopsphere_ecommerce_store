@@ -143,7 +143,7 @@ export const CustomerPortalPage: React.FC<CustomerPortalPageProps> = ({
               </div>
               <div>
                 <div className="d-flex align-items-center gap-2 mb-1">
-                  <h3 className="fw-extrabold text-dark tracking-tight mb-0">{user.name}</h3>
+                  <h3 className="font-extrabold text-dark tracking-tight mb-0">{user.name}</h3>
                   <span className="badge bg-dark rounded-pill px-2.5 py-1 text-xs">
                     {user.membershipTier}
                   </span>
