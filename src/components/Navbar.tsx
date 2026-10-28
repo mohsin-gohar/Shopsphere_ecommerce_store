@@ -11,7 +11,7 @@ import {
   Globe,
   ChevronRight,
 } from 'lucide-react';
-import { PageType, AuthUser } from '../types/ecommerce';
+import { PageType, AuthUser, Product } from '../types/ecommerce';
 
 interface NavbarProps {
   activePage: PageType;
@@ -25,6 +25,7 @@ interface NavbarProps {
   onOpenCart: () => void;
   onOpenWishlist: () => void;
   onOpenAssignmentInfo?: () => void;
+  products?: Product[];
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -39,9 +40,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCart,
   onOpenWishlist,
   onOpenAssignmentInfo,
+  products = [],
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Keyboard shortcut (⌘K or Ctrl+K) to focus search
   useEffect(() => {
@@ -60,6 +64,27 @@ export const Navbar: React.FC<NavbarProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activePage, onNavigate]);
 
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const searchSuggestions =
+    searchQuery.trim().length >= 2
+      ? products
+          .filter(
+            (p) =>
+              p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              (p.category || '').toLowerCase().includes(searchQuery.toLowerCase())
+          )
+          .slice(0, 6)
+      : [];
   const baseNavLinks: { label: string; page: PageType }[] = [
     { label: 'Shop', page: 'shop' },
     { label: 'About', page: 'about' },
@@ -166,7 +191,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Zone 3: Interactive Action Suite */}
           <div className="d-flex align-items-center gap-2">
             {/* Search Box (Desktop) */}
-            <div className="d-none d-xl-flex align-items-center luxury-search-box px-2.5 py-1" style={{ width: '220px' }}>
+            <div
+              ref={searchContainerRef}
+              className="d-none d-xl-flex align-items-center luxury-search-box px-2.5 py-1 position-relative"
+              style={{ width: '220px' }}
+            >
               <Search size={14} className="text-slate-400 me-2 flex-shrink-0" />
               <input
                 ref={searchInputRef}
@@ -177,8 +206,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 value={searchQuery}
                 onChange={(e) => {
                   onSearchChange(e.target.value);
+                  setShowSuggestions(true);
                   if (activePage !== 'shop') onNavigate('shop');
                 }}
+                onFocus={() => setShowSuggestions(true)}
               />
               {searchQuery ? (
                 <button
@@ -190,6 +221,32 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               ) : (
                 <kbd className="luxury-kbd ms-1 d-none d-xxl-inline">⌘K</kbd>
+              )}
+              {showSuggestions && searchSuggestions.length > 0 && (
+                <div className="position-absolute top-100 start-0 mt-2 w-100 bg-white border border-slate-200 rounded-3 shadow-lg overflow-hidden" style={{ zIndex: 1080, minWidth: '260px' }}>
+                  {searchSuggestions.map((product) => (
+                    <button
+                      key={product.id}
+                      type="button"
+                      className="w-100 border-0 bg-transparent text-start px-3 py-2 hover:bg-slate-50 d-flex align-items-center gap-2"
+                      onClick={() => {
+                        onSearchChange(product.name);
+                        setShowSuggestions(false);
+                        if (activePage !== 'shop') onNavigate('shop');
+                      }}
+                    >
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '6px' }}
+                      />
+                      <div className="flex-grow-1 min-w-0">
+                        <div className="small fw-semibold text-slate-900 text-truncate">{product.name}</div>
+                        <div className="text-slate-500 text-2xs">{product.category} · ${product.price}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 

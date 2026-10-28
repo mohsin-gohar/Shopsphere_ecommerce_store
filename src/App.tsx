@@ -15,6 +15,7 @@ import { Navbar } from './components/Navbar';
 import { HeroBanner } from './components/HeroBanner';
 import { CategoryBar } from './components/CategoryBar';
 import { ProductGrid } from './components/ProductGrid';
+import { ProductCard } from './components/ProductCard';
 import { ProductDetailView } from './components/ProductDetailView';
 import { CartOffcanvas } from './components/CartOffcanvas';
 import { CheckoutModal } from './components/CheckoutModal';
@@ -137,6 +138,18 @@ export default function App() {
 
   // Modals & Drawers
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [recentlyViewed, setRecentlyViewed] = useState<number[]>(() => {
+    try {
+      const saved = localStorage.getItem('shopsphere_recently_viewed_v1');
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'number') : [];
+    } catch {
+      return [];
+    }
+  });
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState<boolean>(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
@@ -196,6 +209,19 @@ export default function App() {
     loadData();
   }, [loadData]);
 
+  // Scroll progress & back-to-top
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      setScrollProgress(scrollHeight > 0 ? Math.min(100, (scrollTop / scrollHeight) * 100) : 0);
+      setShowBackToTop(scrollTop > 400);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Persist cart to localStorage
   useEffect(() => {
     try {
@@ -217,7 +243,23 @@ export default function App() {
       console.error('Failed to persist coupon:', err);
     }
   }, [appliedCoupon]);
-  // Persist wishlist to localStorage
+  // Persist recently viewed
+  useEffect(() => {
+    try {
+      localStorage.setItem('shopsphere_recently_viewed_v1', JSON.stringify(recentlyViewed));
+    } catch (err) {
+      console.error('Failed to persist recently viewed:', err);
+    }
+  }, [recentlyViewed]);
+
+  // Record recently viewed product
+  useEffect(() => {
+    if (!selectedProduct) return;
+    setRecentlyViewed((prev) => {
+      const next = [selectedProduct.id, ...prev.filter((id) => id !== selectedProduct.id)];
+      return next.slice(0, 8);
+    });
+  }, [selectedProduct]);
   useEffect(() => {
     try {
       localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlist));
@@ -490,6 +532,17 @@ export default function App() {
       }
     >
     <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: '#fcfcfd' }}>
+      {/* Scroll progress */}
+      <div className="position-fixed top-0 start-0 w-100" style={{ height: '3px', zIndex: 1090, pointerEvents: 'none' }}>
+        <div
+          style={{
+            height: '100%',
+            width: `${scrollProgress}%`,
+            background: 'linear-gradient(90deg, #6366f1, #ec4899)',
+            transition: 'width 0.1s linear',
+          }}
+        />
+      </div>
       {/* 3-Zone Clean Top Navigation */}
       <Navbar
         activePage={activePage}
@@ -508,6 +561,7 @@ export default function App() {
         onOpenCart={() => setIsCartOpen(true)}
         onOpenWishlist={() => setIsWishlistOpen(true)}
         onOpenAssignmentInfo={() => setIsAssignmentInfoOpen(true)}
+        products={products}
       />
 
       {/* Main Page Content Body */}
@@ -538,6 +592,36 @@ export default function App() {
               onToggleWishlist={handleToggleWishlist}
               dataSource={dataSource}
             />
+
+            {recentlyViewed.length > 0 && (
+              <section className="mt-5">
+                <div className="d-flex align-items-center justify-content-between mb-3">
+                  <h5 className="font-extrabold text-slate-900 mb-0">Recently Viewed</h5>
+                  <button
+                    type="button"
+                    className="btn btn-link text-slate-500 text-xs p-0"
+                    onClick={() => setRecentlyViewed([])}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="row g-3">
+                  {recentlyViewed
+                    .map((id) => products.find((p) => p.id === id))
+                    .filter(Boolean)
+                    .map((product) => (
+                      <ProductCard
+                        key={product!.id}
+                        product={product!}
+                        onAddToCart={handleAddToCart}
+                        onQuickView={(prod) => setSelectedProduct(prod)}
+                        isWishlisted={wishlist.includes(product!.id)}
+                        onToggleWishlist={handleToggleWishlist}
+                      />
+                    ))}
+                </div>
+              </section>
+            )}
           </>
         )}
 
@@ -696,6 +780,19 @@ export default function App() {
         onClose={() => setIsAssignmentInfoOpen(false)}
         apiConnected={dataSource === 'api'}
       />
+
+      {/* Back to top */}
+      {showBackToTop && (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="btn btn-dark rounded-circle position-fixed shadow-lg"
+          style={{ bottom: '24px', right: '24px', width: '44px', height: '44px', zIndex: 1060 }}
+          aria-label="Back to top"
+        >
+          ↑
+        </button>
+      )}
 
       {/* Real-time Toast Notifications */}
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
