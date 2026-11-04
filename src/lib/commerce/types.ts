@@ -1,44 +1,3 @@
-export type PageType =
-  | 'shop'
-  | 'about'
-  | 'contact'
-  | 'tracking'
-  | 'faq'
-  | 'policies'
-  | 'dashboard'
-  | 'customer-portal'
-  | 'auth';
-
-export type UserRole = 'admin' | 'customer';
-
-export interface AuthUser {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  membershipTier: 'Bronze Member' | 'Silver Collector' | 'Gold VIP' | 'Atelier Platinum';
-  loyaltyPoints: number;
-  walletBalance: number;
-  phone: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  joinedDate: string;
-}
-
-export interface CRMCustomer {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  city: string;
-  totalOrders: number;
-  totalSpent: number;
-  tier: string;
-  status: 'Active' | 'VIP' | 'New';
-  lastOrderDate: string;
-}
-
 export interface Product {
   id: number;
   name: string;
@@ -64,6 +23,7 @@ export interface CartItem {
   product: Product;
   quantity: number;
   size?: string;
+  color?: string;
 }
 
 export type SortOption =
@@ -74,15 +34,6 @@ export type SortOption =
   | 'reviews'
   | 'discount';
 
-export interface FilterState {
-  search: string;
-  category: string;
-  sortBy: SortOption;
-  maxPrice: number;
-  minRating: number;
-  badge: string;
-}
-
 export interface CustomerInfo {
   fullName: string;
   email: string;
@@ -90,10 +41,18 @@ export interface CustomerInfo {
   address: string;
   city: string;
   postalCode: string;
-  paymentMethod: 'card' | 'cod' | 'jazzcash' | 'easypaisa' | 'bank';
+  paymentMethod: 'card' | 'cod' | 'jazzcash' | 'easypaisa' | 'bank' | 'wallet';
   notes?: string;
   cardLast4?: string;
 }
+
+export type OrderStatus =
+  | 'Confirmed'
+  | 'Processing in Studio'
+  | 'Dispatched'
+  | 'In Transit'
+  | 'Delivered'
+  | 'Cancelled';
 
 export interface Order {
   id: string;
@@ -104,26 +63,69 @@ export interface Order {
   shipping: number;
   tax: number;
   total: number;
+  loyaltyDiscount?: number;
+  walletApplied?: number;
+  pointsRedeemed?: number;
+  amountDue?: number;
   customer: CustomerInfo;
   couponCode?: string;
-  status: 'Confirmed' | 'Processing in Studio' | 'Dispatched' | 'In Transit' | 'Delivered';
+  status: OrderStatus;
   trackingNumber: string;
   carrier: string;
   estimatedDeliveryDate: string;
 }
 
-export interface ToastMessage {
+export interface SavedAddress {
   id: string;
-  title: string;
-  message: string;
-  type: 'success' | 'info' | 'warning' | 'danger';
+  email: string;
+  label: string;
+  fullName: string;
+  phone: string;
+  address: string;
+  city: string;
+  postalCode: string;
 }
 
-export interface FaqItem {
+export interface ClientReview {
   id: string;
-  category: 'shipping' | 'returns' | 'sizing' | 'payment';
-  question: string;
-  answer: string;
+  productId: number;
+  name: string;
+  rating: number;
+  title: string;
+  body: string;
+  createdAt: string;
+}
+
+export type ReturnStatus = 'Requested' | 'Refunded' | 'Declined';
+
+export interface ReturnRequest {
+  id: string;
+  orderId: string;
+  email: string;
+  reason: string;
+  note: string;
+  status: ReturnStatus;
+  refund: number;
+  createdAt: string;
+}
+
+export interface CustomCoupon {
+  code: string;
+  kind: 'percent' | 'flat';
+  amount: number;
+  label: string;
+}
+
+export interface StockAlert {
+  id: string;
+  productId: number;
+  email: string;
+  createdAt: string;
+}
+
+export interface LetterSubscriber {
+  email: string;
+  createdAt: string;
 }
 
 export interface ContactInquiry {
@@ -135,4 +137,28 @@ export interface ContactInquiry {
   orderNumber?: string;
   message: string;
   createdAt: string;
+}
+
+export type UserRole = 'admin' | 'customer';
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  membershipTier: 'Bronze Member' | 'Silver Collector' | 'Gold VIP' | 'Atelier Platinum';
+  loyaltyPoints: number;
+  walletBalance: number;
+  phone: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  joinedDate: string;
+}
+
+export interface FaqItem {
+  id: string;
+  category: 'shipping' | 'returns' | 'sizing' | 'payment';
+  question: string;
+  answer: string;
 }
