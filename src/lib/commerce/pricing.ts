@@ -1,8 +1,17 @@
-export const COUPONS = [
-  { code: "STUDENT20", label: "20% student edit" },
-  { code: "WELCOME10", label: "10% welcome" },
-  { code: "SAVE15", label: "$15 atelier note" },
-] as const;
+export type CouponRule = {
+  code: string;
+  kind: "percent" | "flat";
+  amount: number;
+  label: string;
+};
+
+const BUILTIN: CouponRule[] = [
+  { code: "STUDENT20", kind: "percent", amount: 20, label: "Student edit" },
+  { code: "WELCOME10", kind: "percent", amount: 10, label: "Welcome note" },
+  { code: "SAVE15", kind: "flat", amount: 15, label: "Atelier note" },
+];
+
+export const COUPONS = BUILTIN;
 
 export function round2(n: number) {
   return Math.round(n * 100) / 100;
@@ -15,18 +24,13 @@ export function money(n: number) {
   }).format(n);
 }
 
-export function quote(subtotal: number, coupon: string | null) {
+export function quote(subtotal: number, coupon: string | null, extras: CouponRule[] = []) {
   const raw = (coupon ?? "").trim().toUpperCase();
+  const rule = [...extras, ...BUILTIN].find((item) => item.code === raw);
   let discount = 0;
   let valid = false;
-  if (subtotal > 0 && raw === "STUDENT20") {
-    discount = subtotal * 0.2;
-    valid = true;
-  } else if (subtotal > 0 && raw === "WELCOME10") {
-    discount = subtotal * 0.1;
-    valid = true;
-  } else if (subtotal > 0 && raw === "SAVE15") {
-    discount = Math.min(15, subtotal);
+  if (subtotal > 0 && rule) {
+    discount = rule.kind === "percent" ? subtotal * (rule.amount / 100) : Math.min(rule.amount, subtotal);
     valid = true;
   }
   discount = round2(discount);
@@ -44,9 +48,29 @@ export function quote(subtotal: number, coupon: string | null) {
   };
 }
 
-export function couponMessage(code: string | null) {
-  if (code === "STUDENT20") return "Student edit applied — 20% off the goods.";
-  if (code === "WELCOME10") return "Welcome note applied — 10% off the goods.";
-  if (code === "SAVE15") return "Atelier note applied — $15 off.";
-  return null;
+export function couponMessage(code: string | null, extras: CouponRule[] = []) {
+  if (!code) return null;
+  const rule = [...extras, ...BUILTIN].find((item) => item.code === code);
+  if (!rule) return null;
+  if (rule.kind === "percent") return `${rule.label} applied — ${rule.amount}% off the goods.`;
+  return `${rule.label} applied — $${rule.amount} off.`;
+}
+
+export function settle(
+  total: number,
+  goodsAfterCoupon: number,
+  walletBalance: number,
+  loyaltyPoints: number,
+  options: { useWallet: boolean; points: number },
+) {
+  const requested = Math.max(0, Math.floor(options.points));
+  const available = Math.max(0, Math.floor(loyaltyPoints));
+  const cap = round2(goodsAfterCoupon * 0.3);
+  const loyaltyDiscount = round2(Math.min(requested, available) / 100);
+  const loyalty = round2(Math.min(loyaltyDiscount, cap, total));
+  const pointsUsed = Math.round(loyalty * 100);
+  let due = round2(Math.max(0, total - loyalty));
+  const walletApplied = options.useWallet ? round2(Math.min(Math.max(0, walletBalance), due)) : 0;
+  due = round2(due - walletApplied);
+  return { loyaltyDiscount: loyalty, walletApplied, due, pointsUsed };
 }

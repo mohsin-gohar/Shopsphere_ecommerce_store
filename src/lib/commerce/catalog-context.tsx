@@ -46,15 +46,17 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     };
   }, [tick]);
 
+  const customProducts = useCommerce((state) => state.customProducts);
+
   const value = useMemo(
     () => ({
-      products,
+      products: [...products, ...customProducts.filter((item) => !products.some((product) => product.id === item.id))],
       categories,
       source,
       loading,
       refresh: () => setTick((n) => n + 1),
     }),
-    [products, categories, source, loading],
+    [products, customProducts, categories, source, loading],
   );
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;
