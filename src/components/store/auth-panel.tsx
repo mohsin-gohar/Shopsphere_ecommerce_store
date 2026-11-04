@@ -7,9 +7,10 @@ export function AuthPanel({ intent }: { intent: "client" | "studio" }) {
   const navigate = useNavigate();
   const login = useCommerce((state) => state.login);
   const register = useCommerce((state) => state.register);
+  const resetPassword = useCommerce((state) => state.resetPassword);
   const user = useCommerce((state) => state.user);
   const hydrated = useCommerce((state) => state.hydrated);
-  const [mode, setMode] = useState<"enter" | "join">(intent === "studio" ? "enter" : "enter");
+  const [mode, setMode] = useState<"enter" | "join" | "reset">(intent === "studio" ? "enter" : "enter");
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState(intent === "studio" ? "admin@shopsphere.studio" : "");
   const [password, setPassword] = useState(intent === "studio" ? "admin123" : "");
@@ -21,7 +22,7 @@ export function AuthPanel({ intent }: { intent: "client" | "studio" }) {
   return (
     <div className="surface p-6 sm:p-8">
       <p className="text-xs tracking-[0.18em] text-brass uppercase">{intent === "studio" ? "Atelier console" : "Client salon"}</p>
-      <h1 className="mt-2 text-4xl">{intent === "studio" ? "Studio key" : mode === "join" ? "Open a profile" : "Welcome back"}</h1>
+      <h1 className="mt-2 text-4xl">{intent === "studio" ? "Studio key" : mode === "join" ? "Open a profile" : mode === "reset" ? "Reset a password" : "Welcome back"}</h1>
       <p className="mt-2 text-sm text-muted">
         {intent === "studio"
           ? "Demonstration access for the operations desk. It lives on this device."
@@ -44,6 +45,9 @@ export function AuthPanel({ intent }: { intent: "client" | "studio" }) {
           </button>
           <button type="button" className="chip" data-on={mode === "join"} onClick={() => setMode("join")}>
             Create profile
+          </button>
+          <button type="button" className="chip" data-on={mode === "reset"} onClick={() => setMode("reset")}>
+            Reset password
           </button>
         </div>
       ) : null}
@@ -69,6 +73,17 @@ export function AuthPanel({ intent }: { intent: "client" | "studio" }) {
             return;
           }
           const emailValue = String(form.get("email") ?? email).trim().toLowerCase();
+          if (mode === "reset") {
+            const result = resetPassword(emailValue, String(form.get("password") ?? ""));
+            if (!result.ok) {
+              setError(result.message);
+              return;
+            }
+            toast.success(result.message);
+            setMode("enter");
+            setPassword("");
+            return;
+          }
           if (
             intent === "studio" &&
             emailValue !== "admin@shopsphere.studio" &&
@@ -108,7 +123,7 @@ export function AuthPanel({ intent }: { intent: "client" | "studio" }) {
         </label>
         {error ? <p className="text-sm text-brass">{error}</p> : null}
         <button className="btn btn-pine" type="submit">
-          {mode === "join" && intent === "client" ? "Create profile" : "Enter"}
+          {mode === "join" && intent === "client" ? "Create profile" : mode === "reset" ? "Save new password" : "Enter"}
         </button>
       </form>
 

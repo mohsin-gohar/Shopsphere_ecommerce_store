@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
 import { ProductCard, ProductVisual } from "@/components/store/product-card";
 import { StoreShell } from "@/components/store/chrome";
 import { useCatalog } from "@/lib/commerce/catalog-context";
@@ -12,8 +13,10 @@ export const Route = createFileRoute("/")({
 function Home() {
   const { products, categories, loading, source } = useCatalog();
   const hidden = useCommerce((state) => state.hidden);
+  const recentIds = useCommerce((state) => state.recentlyViewed);
   const visible = products.filter((product) => !hidden.includes(product.id));
   const featured = [...visible].sort((a, b) => b.reviews - a.reviews).slice(0, 8);
+  const recent = recentIds.map((id) => visible.find((product) => product.id === id)).filter((product) => product !== undefined).slice(0, 4);
   const arrivals = visible.filter((product) => product.badge === "New" || product.badge === "Limited").slice(0, 4);
   const spotlight = arrivals.length >= 4 ? arrivals : visible.slice(4, 8);
 
@@ -94,6 +97,16 @@ function Home() {
           ))}
         </div>
       </section>
+      {recent.length > 0 ? (
+        <section className="mx-auto mt-16 max-w-7xl px-4 sm:px-6">
+          <h2 className="text-3xl sm:text-4xl">You looked at</h2>
+          <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-4">
+            {recent.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="mx-auto mt-16 grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-2">
         <div className="rounded-lg bg-pine p-8 text-cream sm:p-12">
@@ -141,6 +154,7 @@ function Stat({ k, v }: { k: string; v: string }) {
 }
 
 function Newsletter() {
+  const subscribe = useCommerce((state) => state.subscribe);
   const [done, setDone] = useState(false);
   return (
     <section className="mx-auto mt-16 max-w-7xl px-4 sm:px-6">
@@ -154,13 +168,16 @@ function Newsletter() {
             className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row"
             onSubmit={(event) => {
               event.preventDefault();
-              setDone(true);
+              const form = new FormData(event.currentTarget);
+              const result = subscribe(String(form.get("email") ?? ""));
+              toast[result.ok ? "success" : "error"](result.message);
+              if (result.ok) setDone(true);
             }}
           >
             <label className="sr-only" htmlFor="letter">
               Email
             </label>
-            <input id="letter" required type="email" className="field" placeholder="you@atelier.com" />
+            <input id="letter" name="email" required type="email" className="field" placeholder="you@atelier.com" />
             <button className="btn btn-ink" type="submit">
               Join the letter
             </button>

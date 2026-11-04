@@ -14,7 +14,12 @@ function AccountPage() {
   const user = useCommerce((state) => state.user);
   const logout = useCommerce((state) => state.logout);
   const update = useCommerce((state) => state.updateProfile);
+  const changePassword = useCommerce((state) => state.changePassword);
   const orders = useCommerce((state) => state.orders);
+  const addresses = useCommerce((state) => state.addresses);
+  const returns = useCommerce((state) => state.returns);
+  const addAddress = useCommerce((state) => state.addAddress);
+  const removeAddress = useCommerce((state) => state.removeAddress);
   const [saved, setSaved] = useState(false);
 
   if (!hydrated) {
@@ -44,6 +49,8 @@ function AccountPage() {
   }
 
   const mine = orders.filter((order) => order.customer.email.toLowerCase() === user.email.toLowerCase());
+  const books = addresses.filter((item) => item.email === user.email.toLowerCase());
+  const myReturns = returns.filter((item) => item.email === user.email.toLowerCase());
 
   return (
     <StoreShell>
@@ -62,7 +69,9 @@ function AccountPage() {
           <Stat label="Wallet" value={money(user.walletBalance)} />
           <Stat label="Orders" value={String(mine.length)} />
         </div>
+        <p className="mt-3 text-sm text-muted">100 loyalty points equal $1 at checkout, up to 30% of the goods. Wallet credit covers the rest before card, cash, or transfer.</p>
         <div className="mt-8 grid gap-8 lg:grid-cols-2">
+          <div className="grid content-start gap-4">
           <form
             className="surface grid gap-3 p-5"
             onSubmit={(event) => {
@@ -107,6 +116,32 @@ function AccountPage() {
             </button>
             {saved ? <p className="text-sm text-pine">Saved.</p> : null}
           </form>
+          {user.role === "customer" ? (
+            <form
+              className="surface grid gap-3 p-5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = new FormData(event.currentTarget);
+                const result = changePassword(String(form.get("current") ?? ""), String(form.get("next") ?? ""));
+                toast[result.ok ? "success" : "error"](result.message);
+                if (result.ok) event.currentTarget.reset();
+              }}
+            >
+              <h2 className="font-display text-2xl">Password</h2>
+              <label className="text-sm">
+                Current
+                <input name="current" type="password" className="field mt-1" required />
+              </label>
+              <label className="text-sm">
+                New
+                <input name="next" type="password" minLength={4} className="field mt-1" required />
+              </label>
+              <button className="btn btn-ghost justify-self-start" type="submit">
+                Update password
+              </button>
+            </form>
+          ) : null}
+          </div>
           <div>
             <h2 className="font-display text-2xl">Orders</h2>
             {mine.length === 0 ? (
@@ -127,6 +162,85 @@ function AccountPage() {
                     <Link to="/track" search={{ id: order.id }} className="mt-2 inline-block text-sm underline">
                       Track
                     </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+        <div className="mt-8 grid gap-8 lg:grid-cols-2">
+          <form
+            className="surface grid gap-3 p-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              const result = addAddress({
+                label: String(form.get("label") ?? "Home"),
+                fullName: String(form.get("fullName") ?? user.name),
+                phone: String(form.get("phone") ?? user.phone),
+                address: String(form.get("address") ?? ""),
+                city: String(form.get("city") ?? ""),
+                postalCode: String(form.get("postalCode") ?? ""),
+              });
+              toast[result.ok ? "success" : "error"](result.message);
+              if (result.ok) event.currentTarget.reset();
+            }}
+          >
+            <h2 className="font-display text-2xl">Addresses</h2>
+            {books.length === 0 ? <p className="text-sm text-muted">No extra addresses yet. Profile still fills checkout.</p> : null}
+            <ul className="grid gap-2">
+              {books.map((item) => (
+                <li key={item.id} className="flex items-start justify-between gap-3 text-sm">
+                  <span>
+                    <span className="block font-medium">{item.label}</span>
+                    {item.address}, {item.city} {item.postalCode}
+                  </span>
+                  <button type="button" className="text-muted underline" onClick={() => removeAddress(item.id)}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <label className="text-sm">
+              Label
+              <input name="label" className="field mt-1" placeholder="Home" />
+            </label>
+            <label className="text-sm">
+              Name on the door
+              <input name="fullName" className="field mt-1" defaultValue={user.name} />
+            </label>
+            <label className="text-sm">
+              Street
+              <input name="address" className="field mt-1" required />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-sm">
+                City
+                <input name="city" className="field mt-1" required />
+              </label>
+              <label className="text-sm">
+                Postal code
+                <input name="postalCode" className="field mt-1" required />
+              </label>
+            </div>
+            <button className="btn btn-ghost justify-self-start" type="submit">
+              Save address
+            </button>
+          </form>
+          <div>
+            <h2 className="font-display text-2xl">Returns</h2>
+            {myReturns.length === 0 ? (
+              <p className="mt-3 text-muted">No return requests. Delivered orders can be returned from the receipt.</p>
+            ) : (
+              <ul className="mt-3 grid gap-3">
+                {myReturns.map((item) => (
+                  <li key={item.id} className="surface p-4 text-sm">
+                    <p className="font-medium">
+                      {item.id} · {item.orderId}
+                    </p>
+                    <p className="text-muted">
+                      {item.reason} · {item.status}
+                    </p>
                   </li>
                 ))}
               </ul>

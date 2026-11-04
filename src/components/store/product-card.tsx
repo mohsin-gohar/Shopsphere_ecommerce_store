@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Heart, Star } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { money } from "@/lib/commerce/pricing";
 import { useCommerce } from "@/lib/commerce/store";
 import type { Product } from "@/lib/commerce/types";
@@ -47,6 +48,9 @@ export function ProductCard({ product }: { product: Product }) {
   const wished = useCommerce((state) => state.wishlist.includes(product.id));
   const toggleWish = useCommerce((state) => state.toggleWish);
   const price = useCommerce((state) => state.priceOverrides[product.id] ?? product.price);
+  const stock = useCommerce((state) => state.stockOf(product.id));
+  const compared = useCommerce((state) => (state.compare ?? []).includes(product.id));
+  const toggleCompare = useCommerce((state) => state.toggleCompare);
   const discount = product.oldPrice && product.oldPrice > price ? Math.round((1 - price / product.oldPrice) * 100) : 0;
 
   return (
@@ -85,6 +89,21 @@ export function ProductCard({ product }: { product: Product }) {
           <Stars value={product.rating} />
         </div>
         {discount > 0 ? <p className="mt-1 text-xs text-pine">{discount}% below the previous edit</p> : null}
+        <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+          <span className={stock === 0 ? "text-brass" : stock <= 3 ? "text-pine" : "text-muted"}>
+            {stock === 0 ? "Sold out" : stock <= 3 ? `Only ${stock} left` : "In the atelier"}
+          </span>
+          <button
+            type="button"
+            className="underline"
+            onClick={() => {
+              const result = toggleCompare(product.id);
+              if (!result.ok) toast.error(result.message);
+            }}
+          >
+            {compared ? "In compare" : "Compare"}
+          </button>
+        </div>
       </div>
     </article>
   );

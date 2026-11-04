@@ -1,8 +1,23 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { FALLBACK_PRODUCTS, INITIAL_SAMPLE_ORDERS } from "./catalog";
-import { quote, round2 } from "./pricing";
-import type { AuthUser, CartItem, ContactInquiry, CustomerInfo, Order, Product } from "./types";
+import { quote, round2, settle } from "./pricing";
+import type {
+  AuthUser,
+  CartItem,
+  ClientReview,
+  ContactInquiry,
+  CustomCoupon,
+  CustomerInfo,
+  LetterSubscriber,
+  Order,
+  Product,
+  ProductEdit,
+  ProductQuestion,
+  ReturnRequest,
+  SavedAddress,
+  StockAlert,
+} from "./types";
 
 export type RegisteredUser = {
   name: string;
@@ -27,6 +42,16 @@ type CommerceState = {
   priceOverrides: Record<number, number>;
   hidden: number[];
   cartOpen: boolean;
+  addresses: SavedAddress[];
+  reviews: ClientReview[];
+  returns: ReturnRequest[];
+  customCoupons: CustomCoupon[];
+  customProducts: Product[];
+  productEdits: Record<number, ProductEdit>;
+  compare: number[];
+  questions: ProductQuestion[];
+  alerts: StockAlert[];
+  subscribers: LetterSubscriber[];
   setHydrated: () => void;
   login: (email: string, password: string) => { ok: true; user: AuthUser } | { ok: false; error: string };
   register: (input: { name: string; email: string; password: string; phone: string }) => { ok: true; user: AuthUser } | { ok: false; error: string };
@@ -37,15 +62,48 @@ type CommerceState = {
   setStock: (id: number, qty: number) => void;
   setPrice: (id: number, price: number) => void;
   toggleHidden: (id: number) => void;
-  addToCart: (product: Product, quantity: number, size?: string) => { ok: boolean; message: string };
-  setQty: (id: number, quantity: number, size?: string) => void;
-  removeFromCart: (id: number, size?: string) => void;
+  addToCart: (product: Product, quantity: number, size?: string, color?: string) => { ok: boolean; message: string };
+  setQty: (id: number, quantity: number, size?: string, color?: string) => void;
+  removeFromCart: (id: number, size?: string, color?: string) => void;
   clearCart: () => void;
   toggleWish: (id: number) => void;
   applyCoupon: (code: string) => { ok: boolean; message: string };
   clearCoupon: () => void;
-  placeOrder: (customer: CustomerInfo) => Order | null;
+  placeOrder: (
+    customer: CustomerInfo,
+    options?: { useWallet?: boolean; points?: number; saveAddress?: boolean },
+  ) => Order | null;
   updateOrderStatus: (id: string, status: Order["status"]) => void;
+  cancelOrder: (id: string) => { ok: boolean; message: string };
+  requestReturn: (orderId: string, reason: string, note: string) => { ok: boolean; message: string };
+  resolveReturn: (id: string, status: "Refunded" | "Declined") => { ok: boolean; message: string };
+  reorder: (orderId: string) => { ok: boolean; message: string };
+  addAddress: (input: Omit<SavedAddress, "id" | "email"> & { email?: string }) => { ok: boolean; message: string };
+  removeAddress: (id: string) => void;
+  addReview: (input: Omit<ClientReview, "id" | "createdAt">) => { ok: boolean; message: string };
+  addCoupon: (input: CustomCoupon) => { ok: boolean; message: string };
+  removeCoupon: (code: string) => void;
+  addProduct: (input: {
+    name: string;
+    category: string;
+    price: number;
+    oldPrice?: number;
+    short_desc: string;
+    image: string;
+    badge?: string;
+  }) => { ok: boolean; message: string };
+  updateProduct: (id: number, patch: ProductEdit) => { ok: boolean; message: string };
+  updateDispatch: (
+    id: string,
+    patch: Partial<Pick<Order, "status" | "carrier" | "trackingNumber" | "estimatedDeliveryDate">>,
+  ) => void;
+  toggleCompare: (id: number) => { ok: boolean; message: string };
+  askQuestion: (input: { productId: number; name: string; question: string }) => { ok: boolean; message: string };
+  answerQuestion: (id: string, answer: string) => { ok: boolean; message: string };
+  changePassword: (current: string, next: string) => { ok: boolean; message: string };
+  resetPassword: (email: string, next: string) => { ok: boolean; message: string };
+  subscribe: (email: string) => { ok: boolean; message: string };
+  requestRestock: (productId: number, email: string) => { ok: boolean; message: string };
   addInquiry: (input: Omit<ContactInquiry, "id" | "createdAt">) => ContactInquiry;
   viewProduct: (id: number) => void;
   setCartOpen: (open: boolean) => void;
@@ -91,6 +149,14 @@ function customerUser(email: string, known?: RegisteredUser): AuthUser {
     postalCode: preset ? "44000" : "",
     joinedDate: "Oct 2026",
   };
+}
+
+function itemKey(id: number, size?: string, color?: string) {
+  return `${id}:${size ?? ""}:${color ?? ""}`;
+}
+
+function sameAccount(user: AuthUser | null, email: string) {
+  return Boolean(user && user.email.toLowerCase() === email.toLowerCase());
 }
 
 function hashCode(value: string) {
@@ -226,6 +292,16 @@ export const useCommerce = create<CommerceState>()(
       priceOverrides: {},
       hidden: [],
       cartOpen: false,
+      addresses: [],
+      reviews: [],
+      returns: [],
+      customCoupons: [],
+      customProducts: [],
+      productEdits: {},
+      compare: [],
+      questions: [],
+      alerts: [],
+      subscribers: [],
       setHydrated: () => set({ hydrated: true }),
       login: (email, password) => {
         const cleanEmail = email.trim().toLowerCase();
@@ -295,39 +371,42 @@ export const useCommerce = create<CommerceState>()(
         const hidden = get().hidden;
         set({ hidden: hidden.includes(id) ? hidden.filter((item) => item !== id) : [...hidden, id] });
       },
-      addToCart: (product, quantity, size) => {
+      addToCart: (product, quantity, size, color) => {
         const qty = Math.max(1, Math.round(quantity));
         const stock = get().stockOf(product.id);
-        const key = `${product.id}:${size ?? ""}`;
+        const key = itemKey(product.id, size, color);
         const inBag = get().cart.filter((item) => item.product.id === product.id).reduce((sum, item) => sum + item.quantity, 0);
         if (inBag + qty > stock) {
           return { ok: false, message: stock === 0 ? "This piece is sold out." : `Only ${stock} remain in the atelier.` };
         }
-        const existing = get().cart.find((item) => `${item.product.id}:${item.size ?? ""}` === key);
+        const existing = get().cart.find((item) => itemKey(item.product.id, item.size, item.color) === key);
         const snapshot: Product = { ...product, price: get().priceOf(product) };
         set({
           cart: existing
             ? get().cart.map((item) =>
-                `${item.product.id}:${item.size ?? ""}` === key
+                itemKey(item.product.id, item.size, item.color) === key
                   ? { ...item, product: snapshot, quantity: item.quantity + qty }
                   : item,
               )
-            : [...get().cart, { product: snapshot, quantity: qty, size }],
+            : [...get().cart, { product: snapshot, quantity: qty, size, color }],
           cartOpen: true,
         });
-        return { ok: true, message: `${snapshot.name}${size ? ` · ${size}` : ""} is in your bag.` };
+        return { ok: true, message: `${snapshot.name}${size ? ` · ${size}` : ""}${color ? ` · ${color}` : ""} is in your bag.` };
       },
-      setQty: (id, quantity, size) => {
+      setQty: (id, quantity, size, color) => {
         const stock = get().stockOf(id);
-        const qty = Math.max(1, Math.min(stock, Math.round(quantity)));
-        const key = `${id}:${size ?? ""}`;
+        const key = itemKey(id, size, color);
+        const others = get()
+          .cart.filter((item) => item.product.id === id && itemKey(item.product.id, item.size, item.color) !== key)
+          .reduce((sum, item) => sum + item.quantity, 0);
+        const qty = Math.max(1, Math.min(Math.max(1, stock - others), Math.round(quantity) || 1));
         set({
-          cart: get().cart.map((item) => (`${item.product.id}:${item.size ?? ""}` === key ? { ...item, quantity: qty } : item)),
+          cart: get().cart.map((item) => (itemKey(item.product.id, item.size, item.color) === key ? { ...item, quantity: qty } : item)),
         });
       },
-      removeFromCart: (id, size) => {
-        const key = `${id}:${size ?? ""}`;
-        set({ cart: get().cart.filter((item) => `${item.product.id}:${item.size ?? ""}` !== key) });
+      removeFromCart: (id, size, color) => {
+        const key = itemKey(id, size, color);
+        set({ cart: get().cart.filter((item) => itemKey(item.product.id, item.size, item.color) !== key) });
       },
       clearCart: () => set({ cart: [], coupon: null }),
       toggleWish: (id) => {
@@ -335,20 +414,33 @@ export const useCommerce = create<CommerceState>()(
         set({ wishlist: wishlist.includes(id) ? wishlist.filter((item) => item !== id) : [id, ...wishlist] });
       },
       applyCoupon: (code) => {
-        const priced = quote(1, code);
+        const priced = quote(1, code, get().customCoupons);
         if (!priced.code) return { ok: false, message: "That code is not in the house book. Try STUDENT20, WELCOME10, or SAVE15." };
         set({ coupon: priced.code });
         const label =
-          priced.code === "STUDENT20" ? "Student edit saved." : priced.code === "WELCOME10" ? "Welcome note saved." : "Atelier note saved.";
+          priced.code === "STUDENT20"
+            ? "Student edit saved."
+            : priced.code === "WELCOME10"
+              ? "Welcome note saved."
+              : priced.code === "SAVE15"
+                ? "Atelier note saved."
+                : `${priced.code} saved.`;
         return { ok: true, message: label };
       },
       clearCoupon: () => set({ coupon: null }),
-      placeOrder: (customer) => {
+      placeOrder: (customer, options) => {
         const cart = get().cart;
         if (cart.length === 0) return null;
         const subtotal = round2(cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0));
-        const priced = quote(subtotal, get().coupon);
+        const priced = quote(subtotal, get().coupon, get().customCoupons);
+        const user = get().user;
+        const canTender = Boolean(user && user.role === "customer" && user.email.toLowerCase() === customer.email.toLowerCase());
+        const settled = settle(priced.total, priced.after, canTender ? user!.walletBalance : 0, canTender ? user!.loyaltyPoints : 0, {
+          useWallet: Boolean(options?.useWallet && canTender),
+          points: canTender ? options?.points ?? 0 : 0,
+        });
         const stamp = new Date();
+        const covered = settled.due === 0 && (settled.walletApplied > 0 || settled.loyaltyDiscount > 0);
         const order: Order = {
           id: `ORD-2026-${stamp.getTime().toString().slice(-6)}`,
           date: stamp.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
@@ -358,35 +450,332 @@ export const useCommerce = create<CommerceState>()(
           shipping: priced.shipping,
           tax: priced.tax,
           total: priced.total,
-          customer,
+          loyaltyDiscount: settled.loyaltyDiscount || undefined,
+          walletApplied: settled.walletApplied || undefined,
+          pointsRedeemed: settled.pointsUsed || undefined,
+          amountDue: settled.due,
+          customer: covered ? { ...customer, paymentMethod: "wallet", cardLast4: undefined } : customer,
           couponCode: priced.code ?? undefined,
           status: "Confirmed",
           trackingNumber: `TCS-EXP-${stamp.getTime().toString().slice(-8)}`,
           carrier: "TCS Express",
           estimatedDeliveryDate: "Within 4–6 days",
         };
-        const user = get().user;
         const nextStock = { ...get().stock };
         for (const item of cart) {
           const current = nextStock[item.product.id] ?? get().stockOf(item.product.id);
           nextStock[item.product.id] = Math.max(0, current - item.quantity);
         }
+        const earned = Math.round(settled.due);
         set({
           orders: [order, ...get().orders],
           cart: [],
           coupon: null,
           cartOpen: false,
-          user: user
-            ? { ...user, loyaltyPoints: user.loyaltyPoints + Math.round(order.total), walletBalance: round2(user.walletBalance) }
-            : user,
+          user:
+            user && canTender
+              ? {
+                  ...user,
+                  loyaltyPoints: user.loyaltyPoints - settled.pointsUsed + earned,
+                  walletBalance: round2(user.walletBalance - settled.walletApplied),
+                }
+              : user,
           stock: nextStock,
         });
+        if (options?.saveAddress && canTender) {
+          get().addAddress({
+            email: customer.email,
+            label: customer.city || "Saved",
+            fullName: customer.fullName,
+            phone: customer.phone,
+            address: customer.address,
+            city: customer.city,
+            postalCode: customer.postalCode,
+          });
+        }
         return order;
       },
       updateOrderStatus: (id, status) =>
         set({
           orders: get().orders.map((order) => (order.id === id ? { ...order, status } : order)),
         }),
+      updateDispatch: (id, patch) =>
+        set({
+          orders: get().orders.map((order) => (order.id === id ? { ...order, ...patch } : order)),
+        }),
+      cancelOrder: (id) => {
+        const order = get().orders.find((item) => item.id === id);
+        if (!order) return { ok: false, message: "That order is not on the book." };
+        if (order.status !== "Confirmed") return { ok: false, message: "Only a confirmed order can be cancelled." };
+        const nextStock = { ...get().stock };
+        for (const item of order.items) {
+          const current = nextStock[item.product.id] ?? get().stockOf(item.product.id);
+          nextStock[item.product.id] = current + item.quantity;
+        }
+        const user = get().user;
+        const restore = sameAccount(user, order.customer.email);
+        set({
+          orders: get().orders.map((item) => (item.id === id ? { ...item, status: "Cancelled" } : item)),
+          stock: nextStock,
+          user:
+            user && restore
+              ? {
+                  ...user,
+                  walletBalance: round2(user.walletBalance + (order.walletApplied ?? 0)),
+                  loyaltyPoints: user.loyaltyPoints + (order.pointsRedeemed ?? 0),
+                }
+              : user,
+        });
+        return { ok: true, message: "The order is cancelled and the pieces are back on the floor." };
+      },
+      requestReturn: (orderId, reason, note) => {
+        const order = get().orders.find((item) => item.id === orderId);
+        if (!order) return { ok: false, message: "That order is not on the book." };
+        if (order.status === "Cancelled") return { ok: false, message: "A cancelled order cannot be returned." };
+        if (order.status !== "Delivered") return { ok: false, message: "Returns open once the piece has been delivered." };
+        if (get().returns.some((item) => item.orderId === orderId && item.status !== "Declined")) {
+          return { ok: false, message: "A return is already open for this order." };
+        }
+        const request: ReturnRequest = {
+          id: `RET-${Date.now().toString().slice(-6)}`,
+          orderId,
+          email: order.customer.email,
+          reason: reason.trim() || "Changed my mind",
+          note: note.trim(),
+          status: "Requested",
+          refund: order.amountDue ?? order.total,
+          createdAt: new Date().toISOString(),
+        };
+        set({ returns: [request, ...get().returns] });
+        return { ok: true, message: "Return requested. The atelier will review it." };
+      },
+      resolveReturn: (id, status) => {
+        const request = get().returns.find((item) => item.id === id);
+        if (!request || request.status !== "Requested") return { ok: false, message: "That return is already closed." };
+        const order = get().orders.find((item) => item.id === request.orderId);
+        const user = get().user;
+        const credit = status === "Refunded" && order && sameAccount(user, order.customer.email) ? request.refund : 0;
+        set({
+          returns: get().returns.map((item) => (item.id === id ? { ...item, status } : item)),
+          user: user && credit ? { ...user, walletBalance: round2(user.walletBalance + credit) } : user,
+        });
+        return {
+          ok: true,
+          message: status === "Refunded" ? "Refund posted to the client wallet." : "Return declined.",
+        };
+      },
+      reorder: (orderId) => {
+        const order = get().orders.find((item) => item.id === orderId);
+        if (!order) return { ok: false, message: "That order is not on the book." };
+        let added = 0;
+        for (const item of order.items) {
+          const result = get().addToCart(item.product, item.quantity, item.size, item.color);
+          if (result.ok) added += 1;
+        }
+        if (added === 0) return { ok: false, message: "Those pieces are no longer in stock." };
+        return { ok: true, message: added === order.items.length ? "The order is back in your bag." : "What we still have is in your bag." };
+      },
+      addAddress: (input) => {
+        const email = (input.email ?? get().user?.email ?? "").trim().toLowerCase();
+        if (!email) return { ok: false, message: "Sign in before saving an address." };
+        if (input.address.trim().length < 5 || input.city.trim().length < 2) {
+          return { ok: false, message: "Add a street and a city." };
+        }
+        const next: SavedAddress = {
+          id: `ADR-${Date.now().toString().slice(-6)}`,
+          email,
+          label: input.label.trim() || input.city.trim(),
+          fullName: input.fullName.trim(),
+          phone: input.phone.trim(),
+          address: input.address.trim(),
+          city: input.city.trim(),
+          postalCode: input.postalCode.trim(),
+        };
+        const duplicate = get().addresses.find(
+          (item) => item.email === email && item.address.toLowerCase() === next.address.toLowerCase() && item.city.toLowerCase() === next.city.toLowerCase(),
+        );
+        if (duplicate) return { ok: true, message: "That address is already saved." };
+        set({ addresses: [next, ...get().addresses] });
+        return { ok: true, message: "Address saved." };
+      },
+      removeAddress: (id) => set({ addresses: get().addresses.filter((item) => item.id !== id) }),
+      addReview: (input) => {
+        if (input.title.trim().length < 2 || input.body.trim().length < 8) {
+          return { ok: false, message: "Write a short title and a note of at least a sentence." };
+        }
+        const review: ClientReview = {
+          ...input,
+          name: input.name.trim() || "Client",
+          title: input.title.trim(),
+          body: input.body.trim(),
+          rating: Math.max(1, Math.min(5, Math.round(input.rating))),
+          id: `REV-${Date.now().toString().slice(-6)}`,
+          createdAt: new Date().toISOString(),
+        };
+        set({ reviews: [review, ...get().reviews] });
+        return { ok: true, message: "Your note is on the piece." };
+      },
+      addCoupon: (input) => {
+        const code = input.code.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+        if (code.length < 4) return { ok: false, message: "Codes need at least 4 letters or numbers." };
+        if (["STUDENT20", "WELCOME10", "SAVE15"].includes(code)) return { ok: false, message: "That house code already exists." };
+        const amount = round2(input.amount);
+        if (amount <= 0) return { ok: false, message: "Enter an amount greater than zero." };
+        const rule: CustomCoupon = {
+          code,
+          kind: input.kind,
+          amount: input.kind === "percent" ? Math.min(80, amount) : amount,
+          label: input.label.trim() || "Studio code",
+        };
+        set({
+          customCoupons: [rule, ...get().customCoupons.filter((item) => item.code !== code)],
+        });
+        return { ok: true, message: `${code} is live.` };
+      },
+      removeCoupon: (code) => set({ customCoupons: get().customCoupons.filter((item) => item.code !== code) }),
+      addProduct: (input) => {
+        const name = input.name.trim();
+        if (name.length < 2) return { ok: false, message: "Name the piece." };
+        if (!/^https?:\/\//.test(input.image.trim())) return { ok: false, message: "Use a full image URL." };
+        const price = round2(Math.max(1, input.price));
+        const id = Math.max(5000, ...get().customProducts.map((item) => item.id)) + 1;
+        const product: Product = {
+          id,
+          name,
+          category: input.category,
+          price,
+          oldPrice: input.oldPrice && input.oldPrice > price ? round2(input.oldPrice) : undefined,
+          rating: 5,
+          reviews: 0,
+          badge: input.badge?.trim() || "New",
+          short_desc: input.short_desc.trim() || "A new piece from the atelier.",
+          long_description: input.short_desc.trim() || "Cut and added from the atelier console.",
+          image: input.image.trim(),
+        };
+        set({
+          customProducts: [product, ...get().customProducts],
+          stock: { ...get().stock, [id]: 6 },
+        });
+        return { ok: true, message: `${name} is on the floor.` };
+      },
+      updateProduct: (id, patch) => {
+        const name = patch.name?.trim();
+        if (name !== undefined && name.length < 2) return { ok: false, message: "Name the piece." };
+        const next: ProductEdit = { ...(get().productEdits?.[id] ?? {}) };
+        if (name) next.name = name;
+        if (patch.short_desc?.trim()) {
+          next.short_desc = patch.short_desc.trim();
+          next.long_description = patch.short_desc.trim();
+        }
+        if (patch.badge?.trim()) next.badge = patch.badge.trim();
+        if (patch.category) next.category = patch.category;
+        const custom = get().customProducts.find((item) => item.id === id);
+        set({
+          productEdits: { ...(get().productEdits ?? {}), [id]: next },
+          customProducts: custom
+            ? get().customProducts.map((item) =>
+                item.id === id
+                  ? {
+                      ...item,
+                      name: next.name || item.name,
+                      short_desc: next.short_desc || item.short_desc,
+                      long_description: next.long_description || item.long_description,
+                      badge: next.badge || item.badge,
+                      category: next.category || item.category,
+                    }
+                  : item,
+              )
+            : get().customProducts,
+        });
+        return { ok: true, message: "The piece copy is updated." };
+      },
+      toggleCompare: (id) => {
+        const current = get().compare ?? [];
+        if (current.includes(id)) {
+          set({ compare: current.filter((item) => item !== id) });
+          return { ok: true, message: "Removed from compare." };
+        }
+        if (current.length >= 3) return { ok: false, message: "Compare holds three pieces. Remove one first." };
+        set({ compare: [...current, id] });
+        return { ok: true, message: "Added to compare." };
+      },
+      askQuestion: ({ productId, name, question }) => {
+        const body = question.trim();
+        if (body.length < 8) return { ok: false, message: "Ask a full question." };
+        const entry: ProductQuestion = {
+          id: `Q-${Date.now().toString().slice(-6)}`,
+          productId,
+          name: name.trim() || "Client",
+          question: body,
+          createdAt: new Date().toISOString(),
+        };
+        set({ questions: [entry, ...(get().questions ?? [])] });
+        return { ok: true, message: "Question sent to the atelier." };
+      },
+      answerQuestion: (id, answer) => {
+        const body = answer.trim();
+        if (body.length < 2) return { ok: false, message: "Write an answer." };
+        set({
+          questions: (get().questions ?? []).map((item) => (item.id === id ? { ...item, answer: body } : item)),
+        });
+        return { ok: true, message: "Answer published." };
+      },
+      changePassword: (current, next) => {
+        const user = get().user;
+        if (!user) return { ok: false, message: "Sign in first." };
+        if (next.trim().length < 4) return { ok: false, message: "Use at least 4 characters." };
+        if (user.role === "admin") return { ok: false, message: "The studio key stays admin123 for this demonstration." };
+        const known = get().registered.find((entry) => entry.email === user.email.toLowerCase());
+        if (known && known.password !== current.trim()) return { ok: false, message: "Current password does not match." };
+        const record: RegisteredUser = known ?? {
+          name: user.name,
+          email: user.email.toLowerCase(),
+          password: next.trim(),
+          phone: user.phone,
+        };
+        record.password = next.trim();
+        set({
+          registered: [record, ...get().registered.filter((entry) => entry.email !== record.email)],
+        });
+        return { ok: true, message: "Password updated on this device." };
+      },
+      resetPassword: (email, next) => {
+        const clean = email.trim().toLowerCase();
+        if (ADMIN_EMAILS.has(clean)) return { ok: false, message: "The studio key is admin123." };
+        if (next.trim().length < 4) return { ok: false, message: "Use at least 4 characters." };
+        const known = get().registered.find((entry) => entry.email === clean);
+        if (!known && clean !== "mohsingohar759@gmail.com") {
+          return { ok: false, message: "No profile with that email. Create one instead." };
+        }
+        const record: RegisteredUser = {
+          name: known?.name ?? "Mohsin Gohar",
+          email: clean,
+          password: next.trim(),
+          phone: known?.phone ?? "",
+        };
+        set({
+          registered: [record, ...get().registered.filter((entry) => entry.email !== clean)],
+        });
+        return { ok: true, message: "Password reset. Sign in with the new one." };
+      },
+      subscribe: (email) => {
+        const clean = email.trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) return { ok: false, message: "Enter a valid email." };
+        if (get().subscribers.some((item) => item.email === clean)) return { ok: true, message: "You are already on the letter." };
+        set({ subscribers: [{ email: clean, createdAt: new Date().toISOString() }, ...get().subscribers] });
+        return { ok: true, message: "You are on the list." };
+      },
+      requestRestock: (productId, email) => {
+        const clean = email.trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) return { ok: false, message: "Enter a valid email." };
+        if (get().alerts.some((item) => item.productId === productId && item.email === clean)) {
+          return { ok: true, message: "We already have your note." };
+        }
+        set({
+          alerts: [{ id: `ALT-${Date.now().toString().slice(-6)}`, productId, email: clean, createdAt: new Date().toISOString() }, ...get().alerts],
+        });
+        return { ok: true, message: "We will keep your name for the next cutting." };
+      },
       addInquiry: (input) => {
         const inquiry: ContactInquiry = {
           ...input,
@@ -418,10 +807,30 @@ export const useCommerce = create<CommerceState>()(
         stock: state.stock,
         priceOverrides: state.priceOverrides,
         hidden: state.hidden,
+        addresses: state.addresses,
+        reviews: state.reviews,
+        returns: state.returns,
+        customCoupons: state.customCoupons,
+        customProducts: state.customProducts,
+        productEdits: state.productEdits,
+        compare: state.compare,
+        questions: state.questions,
+        alerts: state.alerts,
+        subscribers: state.subscribers,
       }),
     },
   ),
 );
+
+export function useBagQuote(subtotal: number) {
+  const coupon = useCommerce((state) => state.coupon);
+  const extras = useCommerce((state) => state.customCoupons);
+  return quote(subtotal, coupon, extras);
+}
+
+export function lineKey(item: Pick<CartItem, "product" | "size" | "color">) {
+  return `${item.product.id}:${item.size ?? ""}:${item.color ?? ""}`;
+}
 
 export function cartCount(cart: CartItem[]) {
   return cart.reduce((sum, item) => sum + item.quantity, 0);

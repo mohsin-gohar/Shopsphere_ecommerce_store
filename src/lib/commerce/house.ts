@@ -20,21 +20,21 @@ export const FAQS: FaqItem[] = [
     category: "returns",
     question: "What is the return window?",
     answer:
-      "Unworn pieces with tags may return within 30 days. Atelier alterations and pierced jewelry are final. Refunds return to the original tender, or to your ShopSphere wallet if you prefer.",
+      "Unworn pieces with tags may return within 30 days of delivery. Atelier alterations and pierced jewelry are final. Approved refunds return to your ShopSphere wallet.",
   },
   {
     id: "ret-2",
     category: "returns",
     question: "How do I start a return?",
     answer:
-      "Open your order from the client salon or the tracking desk and request a return. We email a prepaid TCS slip. Inspected pieces are refunded within five working days of arrival.",
+      "Open your receipt or the tracking desk and request a return. The atelier reviews it, then credits the order total to the wallet on the matching client account.",
   },
   {
     id: "size-1",
     category: "sizing",
     question: "How should I choose a size?",
     answer:
-      "Garments follow a relaxed European cut. If you sit between sizes, take the larger one for shirts and the smaller one for tailored wool. Shoe sizes on the page are EU.",
+      "Garments follow a relaxed European cut. If you sit between sizes, take the larger one for shirts and the smaller one for tailored wool. Shoe sizes on the page are EU. Each piece has a size note.",
   },
   {
     id: "size-2",
@@ -48,14 +48,14 @@ export const FAQS: FaqItem[] = [
     category: "payment",
     question: "Which ways can I pay?",
     answer:
-      "Visa and Mastercard, cash on delivery inside Pakistan, JazzCash, EasyPaisa, and a direct bank transfer. Card numbers are never stored in full — only a last-four reference.",
+      "Visa and Mastercard, cash on delivery inside Pakistan, JazzCash, EasyPaisa, a direct bank transfer, or your ShopSphere wallet. Loyalty points convert at 100 points to $1, up to 30% of the goods. Card numbers are never stored in full.",
   },
   {
     id: "pay-2",
     category: "payment",
     question: "Which studio codes are live?",
     answer:
-      "STUDENT20 takes 20% off, WELCOME10 takes 10% off, and SAVE15 removes $15. One code per order. Codes apply to merchandise, not to shipping or tax.",
+      "STUDENT20 takes 20% off, WELCOME10 takes 10% off, and SAVE15 removes $15. The atelier can add further codes from the console. One code per order. Codes apply to merchandise, not to shipping or tax.",
   },
 ];
 
@@ -73,6 +73,38 @@ export function sizesFor(category: string) {
   if (category === "Accessories") return ["One size"];
   return ["XS", "S", "M", "L", "XL"];
 }
+
+export function colorsFor(category: string) {
+  if (category === "Shoes") return ["Black", "White", "Clay"];
+  if (category === "Accessories") return ["Gold", "Silver", "Ink"];
+  if (category === "Men") return ["Ink", "Stone", "Ivory"];
+  return ["Ivory", "Black", "Olive"];
+}
+
+export const SIZE_NOTES: Record<string, Array<{ size: string; detail: string }>> = {
+  Women: [
+    { size: "XS", detail: "Bust 80 · Waist 62" },
+    { size: "S", detail: "Bust 84 · Waist 66" },
+    { size: "M", detail: "Bust 88 · Waist 70" },
+    { size: "L", detail: "Bust 94 · Waist 76" },
+    { size: "XL", detail: "Bust 100 · Waist 82" },
+  ],
+  Men: [
+    { size: "XS", detail: "Chest 88 · Waist 74" },
+    { size: "S", detail: "Chest 92 · Waist 78" },
+    { size: "M", detail: "Chest 98 · Waist 84" },
+    { size: "L", detail: "Chest 104 · Waist 90" },
+    { size: "XL", detail: "Chest 110 · Waist 96" },
+  ],
+  Shoes: [
+    { size: "39", detail: "EU 39 · UK 6" },
+    { size: "40", detail: "EU 40 · UK 6.5" },
+    { size: "41", detail: "EU 41 · UK 7.5" },
+    { size: "42", detail: "EU 42 · UK 8" },
+    { size: "43", detail: "EU 43 · UK 9" },
+  ],
+  Accessories: [{ size: "One size", detail: "Designed to sit without adjustment." }],
+};
 
 const REVIEWERS = ["Amina R.", "Leo Park", "Sara Qureshi", "Daniel Okonkwo", "Noor Ali", "James Whit"];
 

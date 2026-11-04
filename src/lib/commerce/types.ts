@@ -156,6 +156,23 @@ export interface AuthUser {
   joinedDate: string;
 }
 
+export interface ProductQuestion {
+  id: string;
+  productId: number;
+  name: string;
+  question: string;
+  answer?: string;
+  createdAt: string;
+}
+
+export interface ProductEdit {
+  name?: string;
+  short_desc?: string;
+  long_description?: string;
+  badge?: string;
+  category?: string;
+}
+
 export interface FaqItem {
   id: string;
   category: 'shipping' | 'returns' | 'sizing' | 'payment';

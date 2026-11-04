@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { StoreShell } from "@/components/store/chrome";
+import { OrderActions } from "@/components/store/order-actions";
 import { money } from "@/lib/commerce/pricing";
 import { useCommerce } from "@/lib/commerce/store";
 import type { Order } from "@/lib/commerce/types";
@@ -66,6 +67,9 @@ function TrackPage() {
               </div>
               <p className="text-sm">{order.estimatedDeliveryDate}</p>
             </div>
+            {order.status === "Cancelled" ? (
+              <p className="mt-6 text-sm">This order was cancelled before it left the atelier.</p>
+            ) : (
             <ol className="mt-6 grid gap-3">
               {STEPS.map((label, index) => (
                 <li key={label} className="flex items-center gap-3 text-sm">
@@ -76,14 +80,22 @@ function TrackPage() {
                 </li>
               ))}
             </ol>
+            )}
             <ul className="mt-6 grid gap-2 border-t border-line pt-4 text-sm">
               {order.items.map((item) => (
-                <li key={`${item.product.id}-${item.size ?? "os"}`} className="flex justify-between">
-                  <span>{item.product.name}</span>
+                <li key={`${item.product.id}-${item.size ?? "os"}-${item.color ?? ""}`} className="flex justify-between">
+                  <span>
+                    {item.product.name}
+                    {item.size ? ` · ${item.size}` : ""}
+                    {item.color ? ` · ${item.color}` : ""}
+                  </span>
                   <span className="tabular-nums">{money(item.product.price * item.quantity)}</span>
                 </li>
               ))}
             </ul>
+            <div className="no-print">
+              <OrderActions order={order} />
+            </div>
             <Link to="/order/$id" params={{ id: order.id }} className="mt-4 inline-block text-sm underline">
               Open the receipt
             </Link>

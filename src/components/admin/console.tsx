@@ -8,7 +8,7 @@ import { money } from "@/lib/commerce/pricing";
 import { useCommerce } from "@/lib/commerce/store";
 import type { Order } from "@/lib/commerce/types";
 
-type Tab = "floor" | "orders" | "inventory" | "clients" | "dispatch" | "insight";
+type Tab = "floor" | "orders" | "inventory" | "clients" | "dispatch" | "returns" | "studio" | "insight";
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: "floor", label: "Floor" },
@@ -16,10 +16,13 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: "inventory", label: "Inventory" },
   { id: "clients", label: "Clients" },
   { id: "dispatch", label: "Dispatch" },
+  { id: "returns", label: "Returns" },
+  { id: "studio", label: "Studio" },
   { id: "insight", label: "Insight" },
 ];
 
-const STATUSES: Order["status"][] = ["Confirmed", "Processing in Studio", "Dispatched", "In Transit", "Delivered"];
+const FLOW: Order["status"][] = ["Confirmed", "Processing in Studio", "Dispatched", "In Transit", "Delivered"];
+const STATUSES: Order["status"][] = [...FLOW, "Cancelled"];
 
 function helloNow() {
   const hour = new Date().getHours();
@@ -41,6 +44,19 @@ export function AtelierConsole() {
   const hidden = useCommerce((state) => state.hidden);
   const toggleHidden = useCommerce((state) => state.toggleHidden);
   const inquiries = useCommerce((state) => state.inquiries);
+  const returns = useCommerce((state) => state.returns);
+  const resolveReturn = useCommerce((state) => state.resolveReturn);
+  const customCoupons = useCommerce((state) => state.customCoupons);
+  const addCoupon = useCommerce((state) => state.addCoupon);
+  const removeCoupon = useCommerce((state) => state.removeCoupon);
+  const addProduct = useCommerce((state) => state.addProduct);
+  const updateProduct = useCommerce((state) => state.updateProduct);
+  const updateDispatch = useCommerce((state) => state.updateDispatch);
+  const questions = useCommerce((state) => state.questions ?? []);
+  const answerQuestion = useCommerce((state) => state.answerQuestion);
+  const subscribers = useCommerce((state) => state.subscribers);
+  const alerts = useCommerce((state) => state.alerts);
+  const registered = useCommerce((state) => state.registered);
   const { products } = useCatalog();
   const [tab, setTab] = useState<Tab>("floor");
   const [orderQuery, setOrderQuery] = useState("");
@@ -70,7 +86,15 @@ export function AtelierConsole() {
   const page = Math.min(invPage, invPages);
   const invSlice = inventory.slice((page - 1) * 8, page * 8);
 
-  const clients = CLIENTS.map((client) => {
+  const clients = [...CLIENTS, ...registered.filter((entry) => !CLIENTS.some((client) => client.email === entry.email)).map((entry) => ({
+    id: entry.email,
+    name: entry.name,
+    email: entry.email,
+    phone: entry.phone,
+    city: "—",
+    tier: "Bronze Member",
+    status: "New" as const,
+  }))].map((client) => {
     const theirs = orders.filter((order) => order.customer.email === client.email);
     return {
       ...client,
@@ -256,6 +280,40 @@ export function AtelierConsole() {
 
           {tab === "inventory" ? (
             <Panel title="Products & inventory" className="mt-6">
+              <form
+                className="mb-5 grid gap-3 border-b border-cream/10 pb-5 sm:grid-cols-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const form = new FormData(event.currentTarget);
+                  const result = addProduct({
+                    name: String(form.get("name") ?? ""),
+                    category: String(form.get("category") ?? "Women"),
+                    price: Number(form.get("price") ?? 0),
+                    oldPrice: Number(form.get("oldPrice") ?? 0) || undefined,
+                    short_desc: String(form.get("short_desc") ?? ""),
+                    image: String(form.get("image") ?? ""),
+                    badge: String(form.get("badge") ?? "New"),
+                  });
+                  toast[result.ok ? "success" : "error"](result.message);
+                  if (result.ok) event.currentTarget.reset();
+                }}
+              >
+                <p className="sm:col-span-2 text-sm text-cream/70">Add a piece. It stays on this desk and the public floor.</p>
+                <input name="name" className="field" placeholder="Name" aria-label="Piece name" required />
+                <select name="category" className="field" aria-label="Category" defaultValue="Women">
+                  <option>Women</option>
+                  <option>Men</option>
+                  <option>Shoes</option>
+                  <option>Accessories</option>
+                </select>
+                <input name="price" className="field" type="number" min={1} step="0.01" placeholder="Price" aria-label="Price" required />
+                <input name="oldPrice" className="field" type="number" min={0} step="0.01" placeholder="Previous price, optional" aria-label="Previous price" />
+                <input name="image" className="field sm:col-span-2" placeholder="Image URL" aria-label="Image URL" required />
+                <input name="short_desc" className="field sm:col-span-2" placeholder="Short description" aria-label="Description" />
+                <button className="btn btn-brass justify-self-start" type="submit">
+                  Add to the floor
+                </button>
+              </form>
               <div className="mb-4 flex flex-wrap gap-2">
                 <input
                   className="field max-w-xs"
@@ -324,6 +382,36 @@ export function AtelierConsole() {
                           <button type="button" className="text-sm underline" onClick={() => toggleHidden(product.id)}>
                             {hidden.includes(product.id) ? "Restore" : "Archive"}
                           </button>
+                          <details className="mt-2">
+                            <summary className="cursor-pointer text-sm underline">Edit copy</summary>
+                            <form
+                              className="mt-2 grid gap-2"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                const form = new FormData(event.currentTarget);
+                                const result = updateProduct(product.id, {
+                                  name: String(form.get("name") ?? ""),
+                                  short_desc: String(form.get("short_desc") ?? ""),
+                                  badge: String(form.get("badge") ?? ""),
+                                  category: String(form.get("category") ?? product.category),
+                                });
+                                toast[result.ok ? "success" : "error"](result.message);
+                              }}
+                            >
+                              <input name="name" className="field" defaultValue={product.name} aria-label="Name" />
+                              <input name="short_desc" className="field" defaultValue={product.short_desc} aria-label="Description" />
+                              <input name="badge" className="field" defaultValue={product.badge ?? ""} aria-label="Badge" />
+                              <select name="category" className="field" defaultValue={product.category} aria-label="Category">
+                                <option>Women</option>
+                                <option>Men</option>
+                                <option>Shoes</option>
+                                <option>Accessories</option>
+                              </select>
+                              <button className="btn btn-brass" type="submit">
+                                Save copy
+                              </button>
+                            </form>
+                          </details>
                         </td>
                       </tr>
                     ))}
@@ -346,7 +434,12 @@ export function AtelierConsole() {
 
           {tab === "clients" ? (
             <Panel title="Client book" className="mt-6">
-              <input className="field mb-4 max-w-xs" value={clientQuery} onChange={(event) => setClientQuery(event.target.value)} placeholder="Search clients" aria-label="Search clients" />
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <input className="field max-w-xs" value={clientQuery} onChange={(event) => setClientQuery(event.target.value)} placeholder="Search clients" aria-label="Search clients" />
+                <button type="button" className="btn btn-ghost" onClick={() => downloadClients(clients)}>
+                  Export clients
+                </button>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[40rem] text-left text-sm">
                   <thead className="text-xs tracking-wide text-cream/50 uppercase">
@@ -381,7 +474,7 @@ export function AtelierConsole() {
             <Panel title="Still moving" className="mt-6">
               <ul className="grid gap-3">
                 {orders
-                  .filter((order) => order.status !== "Delivered")
+                  .filter((order) => order.status !== "Delivered" && order.status !== "Cancelled")
                   .map((order) => (
                     <li key={order.id} className="grid gap-2 border-b border-cream/10 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
                       <div>
@@ -391,13 +484,33 @@ export function AtelierConsole() {
                         <p className="text-sm text-cream/60">
                           {order.trackingNumber} · {order.carrier} · {order.estimatedDeliveryDate}
                         </p>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                          <input
+                            className="field"
+                            defaultValue={order.trackingNumber}
+                            aria-label={`Tracking for ${order.id}`}
+                            onBlur={(event) => updateDispatch(order.id, { trackingNumber: event.target.value })}
+                          />
+                          <input
+                            className="field"
+                            defaultValue={order.carrier}
+                            aria-label={`Carrier for ${order.id}`}
+                            onBlur={(event) => updateDispatch(order.id, { carrier: event.target.value })}
+                          />
+                          <input
+                            className="field"
+                            defaultValue={order.estimatedDeliveryDate}
+                            aria-label={`Arrival for ${order.id}`}
+                            onBlur={(event) => updateDispatch(order.id, { estimatedDeliveryDate: event.target.value })}
+                          />
+                        </div>
                       </div>
                       <button
                         type="button"
                         className="btn btn-brass"
                         onClick={() => {
-                          const index = STATUSES.indexOf(order.status);
-                          const next = STATUSES[Math.min(STATUSES.length - 1, index + 1)];
+                          const index = FLOW.indexOf(order.status);
+                          const next = FLOW[Math.min(FLOW.length - 1, Math.max(0, index + 1))];
                           updateStatus(order.id, next);
                           toast.success(`${order.id} → ${next}`);
                         }}
@@ -408,6 +521,142 @@ export function AtelierConsole() {
                   ))}
               </ul>
             </Panel>
+          ) : null}
+
+          {tab === "returns" ? (
+            <Panel title="Returns" className="mt-6">
+              {returns.length === 0 ? <p className="text-cream/60">No return requests yet.</p> : null}
+              <ul className="grid gap-3">
+                {returns.map((item) => (
+                  <li key={item.id} className="grid gap-2 border-b border-cream/10 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                    <div>
+                      <p>
+                        {item.id} · {item.orderId}
+                      </p>
+                      <p className="text-sm text-cream/60">
+                        {item.email} · {item.reason} · {item.status}
+                        {item.note ? ` · ${item.note}` : ""}
+                      </p>
+                    </div>
+                    {item.status === "Requested" ? (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-brass"
+                          onClick={() => {
+                            const result = resolveReturn(item.id, "Refunded");
+                            toast[result.ok ? "success" : "error"](result.message);
+                          }}
+                        >
+                          Refund {money(item.refund)}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => {
+                            const result = resolveReturn(item.id, "Declined");
+                            toast[result.ok ? "success" : "error"](result.message);
+                          }}
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          ) : null}
+
+          {tab === "studio" ? (
+            <div className="mt-6 grid gap-4 xl:grid-cols-2">
+              <Panel title="Studio codes">
+                <form
+                  className="grid gap-3"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const form = new FormData(event.currentTarget);
+                    const result = addCoupon({
+                      code: String(form.get("code") ?? ""),
+                      kind: String(form.get("kind") ?? "percent") === "flat" ? "flat" : "percent",
+                      amount: Number(form.get("amount") ?? 0),
+                      label: String(form.get("label") ?? "Studio code"),
+                    });
+                    toast[result.ok ? "success" : "error"](result.message);
+                    if (result.ok) event.currentTarget.reset();
+                  }}
+                >
+                  <input name="code" className="field" placeholder="Code" aria-label="Coupon code" required />
+                  <div className="grid grid-cols-2 gap-2">
+                    <select name="kind" className="field" aria-label="Discount kind" defaultValue="percent">
+                      <option value="percent">Percent</option>
+                      <option value="flat">Flat USD</option>
+                    </select>
+                    <input name="amount" className="field" type="number" min={1} step="1" placeholder="Amount" aria-label="Amount" required />
+                  </div>
+                  <input name="label" className="field" placeholder="Label" aria-label="Coupon label" />
+                  <button className="btn btn-brass justify-self-start" type="submit">
+                    Publish code
+                  </button>
+                </form>
+                <ul className="mt-4 grid gap-2 text-sm">
+                  {customCoupons.length === 0 ? <li className="text-cream/60">House codes STUDENT20, WELCOME10, and SAVE15 stay live.</li> : null}
+                  {customCoupons.map((item) => (
+                    <li key={item.code} className="flex items-center justify-between gap-3">
+                      <span>
+                        {item.code} · {item.kind === "percent" ? `${item.amount}%` : money(item.amount)}
+                      </span>
+                      <button type="button" className="underline" onClick={() => removeCoupon(item.code)}>
+                        Retire
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </Panel>
+              <Panel title="Piece questions">
+                {questions.length === 0 ? <p className="text-sm text-cream/60">No client questions yet.</p> : null}
+                <ul className="grid gap-3">
+                  {questions.map((item) => (
+                    <li key={item.id} className="border-b border-cream/10 pb-3">
+                      <p className="text-sm text-cream/60">
+                        {item.name} · piece {item.productId}
+                      </p>
+                      <p className="mt-1">{item.question}</p>
+                      {item.answer ? <p className="mt-2 text-sm text-brass">{item.answer}</p> : null}
+                      <form
+                        className="mt-2 flex gap-2"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          const form = new FormData(event.currentTarget);
+                          const result = answerQuestion(item.id, String(form.get("answer") ?? ""));
+                          toast[result.ok ? "success" : "error"](result.message);
+                        }}
+                      >
+                        <input name="answer" className="field" defaultValue={item.answer ?? ""} aria-label={`Answer ${item.id}`} />
+                        <button className="btn btn-brass" type="submit">
+                          Reply
+                        </button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              </Panel>
+              <Panel title="Letters & restock notes">
+                <p className="text-sm text-cream/70">{subscribers.length} on the letter · {alerts.length} waiting for stock</p>
+                <ul className="mt-4 grid gap-2 text-sm">
+                  {subscribers.slice(0, 8).map((item) => (
+                    <li key={item.email}>{item.email}</li>
+                  ))}
+                </ul>
+                <ul className="mt-4 grid gap-2 border-t border-cream/10 pt-3 text-sm text-cream/70">
+                  {alerts.slice(0, 8).map((item) => (
+                    <li key={item.id}>
+                      {item.email} · piece {item.productId}
+                    </li>
+                  ))}
+                </ul>
+              </Panel>
+            </div>
           ) : null}
 
           {tab === "insight" ? (
@@ -480,6 +729,23 @@ function Kpi({ label, value, note }: { label: string; value: string; note: strin
       <p className="mt-1 text-xs text-cream/55">{note}</p>
     </article>
   );
+}
+
+function downloadClients(
+  clients: Array<{ name: string; email: string; city: string; tier: string; orders: number; spent: number }>,
+) {
+  const rows = [
+    ["Name", "Email", "City", "Tier", "Orders", "Spent"],
+    ...clients.map((client) => [client.name, client.email, client.city, client.tier, String(client.orders), client.spent.toFixed(2)]),
+  ];
+  const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "shopsphere-clients.csv";
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function downloadOrders(orders: Order[]) {

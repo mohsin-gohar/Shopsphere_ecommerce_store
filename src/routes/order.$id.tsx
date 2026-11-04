@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { StoreShell } from "@/components/store/chrome";
+import { OrderActions } from "@/components/store/order-actions";
 import { money } from "@/lib/commerce/pricing";
 import { useCommerce } from "@/lib/commerce/store";
 
@@ -13,6 +14,7 @@ const PAYMENT_LABEL: Record<string, string> = {
   jazzcash: "JazzCash",
   easypaisa: "EasyPaisa",
   bank: "Bank transfer",
+  wallet: "Wallet",
 };
 
 function OrderPage() {
@@ -44,6 +46,9 @@ function OrderPage() {
                 <Item k="Payment" v={`${PAYMENT_LABEL[order.customer.paymentMethod] ?? order.customer.paymentMethod}${order.customer.cardLast4 ? ` ···· ${order.customer.cardLast4}` : ""}`} />
                 <Item k="Ship to" v={`${order.customer.address}, ${order.customer.city} ${order.customer.postalCode}`} />
                 <Item k="Total" v={money(order.total)} />
+                {order.loyaltyDiscount ? <Item k="Points" v={`−${money(order.loyaltyDiscount)}`} /> : null}
+                {order.walletApplied ? <Item k="Wallet" v={`−${money(order.walletApplied)}`} /> : null}
+                <Item k="Paid now" v={money(order.amountDue ?? order.total)} />
               </dl>
               <ul className="mt-5 grid gap-2 border-t border-line pt-4 text-sm">
                 {order.items.map((item) => (
@@ -51,13 +56,20 @@ function OrderPage() {
                     <span>
                       {item.product.name} × {item.quantity}
                       {item.size ? ` · ${item.size}` : ""}
+                      {item.color ? ` · ${item.color}` : ""}
                     </span>
                     <span className="tabular-nums">{money(item.product.price * item.quantity)}</span>
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="no-print">
+              <OrderActions order={order} />
+            </div>
+            <div className="no-print mt-6 flex flex-wrap gap-3">
+              <button type="button" className="btn btn-ghost" onClick={() => window.print()}>
+                Print receipt
+              </button>
               <Link to="/track" search={{ id: order.id }} className="btn btn-pine">
                 Track this order
               </Link>

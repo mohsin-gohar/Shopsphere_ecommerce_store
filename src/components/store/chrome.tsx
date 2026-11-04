@@ -1,9 +1,10 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Menu, Search, ShoppingBag, UserRound, X, Minus, Plus, Trash2, Heart } from "lucide-react";
+import { Menu, Search, ShoppingBag, UserRound, X, Minus, Plus, Trash2, Heart, Columns2 } from "lucide-react";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { ProductVisual } from "@/components/store/product-card";
-import { couponMessage, money, quote } from "@/lib/commerce/pricing";
-import { cartCount, cartSubtotal, useCommerce } from "@/lib/commerce/store";
+import { useCatalog } from "@/lib/commerce/catalog-context";
+import { couponMessage, money } from "@/lib/commerce/pricing";
+import { cartCount, cartSubtotal, lineKey, useBagQuote, useCommerce } from "@/lib/commerce/store";
 
 const NAV = [
   { label: "Shop", to: "/shop" as const, search: { q: "", category: "All" } },
@@ -38,6 +39,9 @@ function SiteHeader() {
   const wishes = useCommerce((state) => state.wishlist.length);
   const setCartOpen = useCommerce((state) => state.setCartOpen);
   const user = useCommerce((state) => state.user);
+  const hidden = useCommerce((state) => state.hidden);
+  const compareCount = useCommerce((state) => (state.compare ?? []).length);
+  const { products } = useCatalog();
   const [menu, setMenu] = useState(false);
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
@@ -46,6 +50,13 @@ function SiteHeader() {
     setMenu(false);
     setSearching(false);
   }, [path]);
+
+  const suggestions =
+    query.trim().length < 2
+      ? []
+      : products
+          .filter((product) => !hidden.includes(product.id) && `${product.name} ${product.category} ${product.short_desc}`.toLowerCase().includes(query.trim().toLowerCase()))
+          .slice(0, 5);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -84,6 +95,10 @@ function SiteHeader() {
             <Heart className="size-5" fill={hydrated && wishes > 0 ? "currentColor" : "none"} />
             {hydrated && wishes > 0 ? <Badge value={wishes} /> : null}
           </Link>
+          <Link to="/compare" className="relative grid size-11 place-items-center" aria-label="Compare">
+            <Columns2 className="size-5" />
+            {hydrated && compareCount > 0 ? <Badge value={compareCount} /> : null}
+          </Link>
           <Link
             to={user?.role === "admin" ? "/admin" : "/account"}
             className="grid size-11 place-items-center"
@@ -98,6 +113,7 @@ function SiteHeader() {
         </div>
       </div>
       {searching ? (
+        <>
         <form onSubmit={submit} className="mx-auto flex max-w-7xl gap-2 px-4 pb-4 sm:px-6">
           <label className="sr-only" htmlFor="site-search">
             Search pieces
@@ -113,6 +129,19 @@ function SiteHeader() {
             Search
           </button>
         </form>
+        {suggestions.length > 0 ? (
+          <ul className="mx-auto grid max-w-7xl px-4 pb-4 sm:px-6">
+            {suggestions.map((product) => (
+              <li key={product.id}>
+                <Link to="/product/$id" params={{ id: String(product.id) }} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <span>{product.name}</span>
+                  <span className="text-muted">{product.category === "Accessories" ? "Objects" : product.category}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        </>
       ) : null}
       {menu ? (
         <div className="fixed inset-0 z-50 bg-ink/40 lg:hidden">
@@ -132,6 +161,8 @@ function SiteHeader() {
                   {link.label}
                 </Link>
               ))}
+              <Link to="/wishlist" className="py-3 text-lg">Wishlist</Link>
+              <Link to="/compare" className="py-3 text-lg">Compare</Link>
               <Link to="/about" className="py-3 text-lg">The House</Link>
               <Link to="/track" search={{ id: "" }} className="py-3 text-lg">Track an order</Link>
               <Link to="/faq" className="py-3 text-lg">Questions</Link>
@@ -169,6 +200,7 @@ function SiteFooter() {
           <ul className="mt-3 grid gap-2 text-sm">
             <li><Link to="/shop" search={{ q: "", category: "All" }} className="text-cream/85 hover:text-cream">The edit</Link></li>
             <li><Link to="/wishlist" className="text-cream/85 hover:text-cream">Wishlist</Link></li>
+            <li><Link to="/compare" className="text-cream/85 hover:text-cream">Compare</Link></li>
             <li><Link to="/cart" className="text-cream/85 hover:text-cream">Your bag</Link></li>
             <li><Link to="/track" search={{ id: "" }} className="text-cream/85 hover:text-cream">Track</Link></li>
           </ul>
@@ -206,8 +238,9 @@ export function CartDrawer() {
   const setQty = useCommerce((state) => state.setQty);
   const remove = useCommerce((state) => state.removeFromCart);
   const coupon = useCommerce((state) => state.coupon);
+  const extras = useCommerce((state) => state.customCoupons);
   const subtotal = cartSubtotal(cart);
-  const priced = quote(subtotal, coupon);
+  const priced = useBagQuote(subtotal);
 
   useEffect(() => {
     if (!open) return;
@@ -242,7 +275,7 @@ export function CartDrawer() {
           ) : (
             <ul className="grid gap-4">
               {cart.map((item) => (
-                <li key={`${item.product.id}-${item.size ?? "os"}`} className="grid grid-cols-[5rem_1fr] gap-3">
+                <li key={lineKey(item)} className="grid grid-cols-[5rem_1fr] gap-3">
                   <Link to="/product/$id" params={{ id: String(item.product.id) }} onClick={() => setCartOpen(false)} className="aspect-[4/5] overflow-hidden rounded-sm bg-line">
                     <ProductVisual product={item.product} />
                   </Link>
@@ -250,19 +283,22 @@ export function CartDrawer() {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="font-medium leading-snug">{item.product.name}</p>
-                        <p className="text-xs text-muted">{item.size ? `Size ${item.size}` : item.product.category}</p>
+                        <p className="text-xs text-muted">
+                          {item.size ? `Size ${item.size}` : item.product.category}
+                          {item.color ? ` · ${item.color}` : ""}
+                        </p>
                       </div>
-                      <button type="button" aria-label={`Remove ${item.product.name}`} onClick={() => remove(item.product.id, item.size)} className="grid size-9 place-items-center text-muted">
+                      <button type="button" aria-label={`Remove ${item.product.name}`} onClick={() => remove(item.product.id, item.size, item.color)} className="grid size-9 place-items-center text-muted">
                         <Trash2 className="size-4" />
                       </button>
                     </div>
                     <div className="mt-2 flex items-center justify-between">
                       <div className="inline-flex items-center rounded-full border border-line">
-                        <button type="button" className="grid size-9 place-items-center" aria-label="Decrease quantity" onClick={() => setQty(item.product.id, item.quantity - 1, item.size)}>
+                        <button type="button" className="grid size-9 place-items-center" aria-label="Decrease quantity" onClick={() => setQty(item.product.id, item.quantity - 1, item.size, item.color)}>
                           <Minus className="size-3.5" />
                         </button>
                         <span className="w-6 text-center text-sm tabular-nums">{item.quantity}</span>
-                        <button type="button" className="grid size-9 place-items-center" aria-label="Increase quantity" onClick={() => setQty(item.product.id, item.quantity + 1, item.size)}>
+                        <button type="button" className="grid size-9 place-items-center" aria-label="Increase quantity" onClick={() => setQty(item.product.id, item.quantity + 1, item.size, item.color)}>
                           <Plus className="size-3.5" />
                         </button>
                       </div>
@@ -286,7 +322,7 @@ export function CartDrawer() {
                 <span className="tabular-nums">−{money(priced.discount)}</span>
               </div>
             ) : null}
-            <p className="mt-1 text-xs text-muted">{couponMessage(priced.code) ?? "Shipping and tax are confirmed at checkout."}</p>
+            <p className="mt-1 text-xs text-muted">{couponMessage(priced.code, extras) ?? "Shipping and tax are confirmed at checkout."}</p>
             <Link to="/cart" className="btn btn-ghost mt-4 w-full" onClick={() => setCartOpen(false)}>
               Review bag
             </Link>

@@ -4,8 +4,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ProductVisual } from "@/components/store/product-card";
 import { StoreShell } from "@/components/store/chrome";
-import { COUPONS, couponMessage, money, quote } from "@/lib/commerce/pricing";
-import { cartSubtotal, useCommerce } from "@/lib/commerce/store";
+import { COUPONS, couponMessage, money } from "@/lib/commerce/pricing";
+import { cartSubtotal, lineKey, useBagQuote, useCommerce } from "@/lib/commerce/store";
 
 export const Route = createFileRoute("/cart")({
   component: CartPage,
@@ -17,11 +17,12 @@ function CartPage() {
   const remove = useCommerce((state) => state.removeFromCart);
   const clear = useCommerce((state) => state.clearCart);
   const coupon = useCommerce((state) => state.coupon);
+  const extras = useCommerce((state) => state.customCoupons);
   const applyCoupon = useCommerce((state) => state.applyCoupon);
   const clearCoupon = useCommerce((state) => state.clearCoupon);
   const [code, setCode] = useState("");
   const subtotal = cartSubtotal(cart);
-  const priced = quote(subtotal, coupon);
+  const priced = useBagQuote(subtotal);
 
   return (
     <StoreShell>
@@ -38,7 +39,7 @@ function CartPage() {
           <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">
             <ul className="grid gap-4">
               {cart.map((item) => (
-                <li key={`${item.product.id}-${item.size ?? "os"}`} className="surface grid grid-cols-[6rem_1fr] gap-4 p-3 sm:grid-cols-[7.5rem_1fr]">
+                <li key={lineKey(item)} className="surface grid grid-cols-[6rem_1fr] gap-4 p-3 sm:grid-cols-[7.5rem_1fr]">
                   <Link to="/product/$id" params={{ id: String(item.product.id) }} className="aspect-[4/5] overflow-hidden rounded-sm bg-line">
                     <ProductVisual product={item.product} />
                   </Link>
@@ -48,21 +49,24 @@ function CartPage() {
                         <Link to="/product/$id" params={{ id: String(item.product.id) }} className="font-medium">
                           {item.product.name}
                         </Link>
-                        <p className="text-sm text-muted">{item.size ? `Size ${item.size}` : item.product.category}</p>
+                        <p className="text-sm text-muted">
+                          {item.size ? `Size ${item.size}` : item.product.category}
+                          {item.color ? ` · ${item.color}` : ""}
+                        </p>
                       </div>
                       <p className="tabular-nums">{money(item.product.price * item.quantity)}</p>
                     </div>
                     <div className="mt-3 flex items-center gap-3">
                       <div className="inline-flex items-center rounded-full border border-line">
-                        <button type="button" className="grid size-10 place-items-center" aria-label="Decrease" onClick={() => setQty(item.product.id, item.quantity - 1, item.size)}>
+                        <button type="button" className="grid size-10 place-items-center" aria-label="Decrease" onClick={() => setQty(item.product.id, item.quantity - 1, item.size, item.color)}>
                           <Minus className="size-4" />
                         </button>
                         <span className="w-6 text-center tabular-nums">{item.quantity}</span>
-                        <button type="button" className="grid size-10 place-items-center" aria-label="Increase" onClick={() => setQty(item.product.id, item.quantity + 1, item.size)}>
+                        <button type="button" className="grid size-10 place-items-center" aria-label="Increase" onClick={() => setQty(item.product.id, item.quantity + 1, item.size, item.color)}>
                           <Plus className="size-4" />
                         </button>
                       </div>
-                      <button type="button" className="inline-flex items-center gap-1 text-sm text-muted" onClick={() => remove(item.product.id, item.size)}>
+                      <button type="button" className="inline-flex items-center gap-1 text-sm text-muted" onClick={() => remove(item.product.id, item.size, item.color)}>
                         <Trash2 className="size-4" /> Remove
                       </button>
                     </div>
@@ -96,7 +100,7 @@ function CartPage() {
                 </button>
               </form>
               <div className="mt-3 flex flex-wrap gap-2">
-                {COUPONS.map((item) => (
+                {[...COUPONS, ...extras].map((item) => (
                   <button key={item.code} type="button" className="chip" data-on={coupon === item.code} onClick={() => applyCoupon(item.code)}>
                     {item.code}
                   </button>
@@ -107,7 +111,7 @@ function CartPage() {
                   Remove {coupon}
                 </button>
               ) : null}
-              <p className="mt-3 text-xs text-muted">{couponMessage(priced.code) ?? "One code per order."}</p>
+              <p className="mt-3 text-xs text-muted">{couponMessage(priced.code, extras) ?? "One code per order."}</p>
               <Link to="/checkout" className="btn btn-pine mt-5 w-full">
                 Continue to checkout
               </Link>

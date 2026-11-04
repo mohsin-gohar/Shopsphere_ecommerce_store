@@ -169,3 +169,15 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+@media print {
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+  }
+}

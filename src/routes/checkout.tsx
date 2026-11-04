@@ -3,8 +3,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { StoreShell } from "@/components/store/chrome";
-import { money, quote } from "@/lib/commerce/pricing";
-import { cartSubtotal, useCommerce } from "@/lib/commerce/store";
+import { money, settle } from "@/lib/commerce/pricing";
+import { cartSubtotal, useBagQuote, useCommerce } from "@/lib/commerce/store";
 import type { CustomerInfo } from "@/lib/commerce/types";
 
 export const Route = createFileRoute("/checkout")({
@@ -36,13 +36,30 @@ const METHODS: Array<{ id: CustomerInfo["paymentMethod"]; label: string; detail:
 function CheckoutPage() {
   const navigate = useNavigate();
   const cart = useCommerce((state) => state.cart);
-  const coupon = useCommerce((state) => state.coupon);
   const user = useCommerce((state) => state.user);
+  const addresses = useCommerce((state) => state.addresses);
   const placeOrder = useCommerce((state) => state.placeOrder);
   const subtotal = cartSubtotal(cart);
-  const priced = quote(subtotal, coupon);
+  const priced = useBagQuote(subtotal);
   const [error, setError] = useState<string | null>(null);
   const [method, setMethod] = useState<CustomerInfo["paymentMethod"]>(user ? "card" : "cod");
+  const [useWallet, setUseWallet] = useState(false);
+  const [points, setPoints] = useState(0);
+  const [saveAddress, setSaveAddress] = useState(false);
+  const [addressId, setAddressId] = useState("profile");
+  const mine = user ? addresses.filter((item) => item.email === user.email.toLowerCase()) : [];
+  const chosen = mine.find((item) => item.id === addressId);
+  const canTender = user?.role === "customer";
+  const settled = settle(
+    priced.total,
+    priced.after,
+    user && canTender ? user.walletBalance : 0,
+    user && canTender ? user.loyaltyPoints : 0,
+    {
+      useWallet: useWallet && Boolean(canTender),
+      points: canTender ? points : 0,
+    },
+  );
 
   if (cart.length === 0) {
     return (
@@ -64,7 +81,7 @@ function CheckoutPage() {
           <h1 className="text-4xl sm:text-5xl">Checkout</h1>
           <p className="mt-2 text-muted">A studio sandbox. Nothing is charged.</p>
           <form
-            key={user?.email ?? "guest"}
+            key={`${user?.email ?? "guest"}-${addressId}`}
             className="mt-6 grid gap-4"
             onSubmit={(event) => {
               event.preventDefault();
@@ -87,7 +104,7 @@ function CheckoutPage() {
                 return;
               }
               const digits = (parsed.data.cardNumber ?? "").replace(/\s/g, "");
-              if (parsed.data.paymentMethod === "card") {
+              if (parsed.data.paymentMethod === "card" && settled.due > 0) {
                 if (!/^\d{16}$/.test(digits)) {
                   setError("Enter a 16-digit card number. Any digits work in this studio.");
                   return;
@@ -102,17 +119,20 @@ function CheckoutPage() {
                 }
               }
               setError(null);
-              const order = placeOrder({
-                fullName: parsed.data.fullName,
-                email: parsed.data.email.trim().toLowerCase(),
-                phone: parsed.data.phone,
-                address: parsed.data.address,
-                city: parsed.data.city,
-                postalCode: parsed.data.postalCode,
-                paymentMethod: parsed.data.paymentMethod,
-                notes: parsed.data.notes,
-                cardLast4: parsed.data.paymentMethod === "card" ? digits.slice(-4) : undefined,
-              });
+              const order = placeOrder(
+                {
+                  fullName: parsed.data.fullName,
+                  email: parsed.data.email.trim().toLowerCase(),
+                  phone: parsed.data.phone,
+                  address: parsed.data.address,
+                  city: parsed.data.city,
+                  postalCode: parsed.data.postalCode,
+                  paymentMethod: parsed.data.paymentMethod,
+                  notes: parsed.data.notes,
+                  cardLast4: parsed.data.paymentMethod === "card" && settled.due > 0 ? digits.slice(-4) : undefined,
+                },
+                { useWallet, points, saveAddress },
+              );
               if (!order) {
                 toast.error("The bag was already empty.");
                 return;
@@ -122,13 +142,56 @@ function CheckoutPage() {
             }}
           >
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field name="fullName" label="Full name" defaultValue={user?.name ?? ""} />
+              <Field name="fullName" label="Full name" defaultValue={chosen?.fullName || user?.name || ""} />
               <Field name="email" label="Email" type="email" defaultValue={user?.email ?? ""} />
-              <Field name="phone" label="Phone" defaultValue={user?.phone ?? ""} />
-              <Field name="city" label="City" defaultValue={user?.city ?? ""} />
-              <Field name="address" label="Address" className="sm:col-span-2" defaultValue={user?.address ?? ""} />
-              <Field name="postalCode" label="Postal code" defaultValue={user?.postalCode ?? ""} />
+              <Field name="phone" label="Phone" defaultValue={chosen?.phone || user?.phone || ""} />
+              <Field name="city" label="City" defaultValue={chosen?.city || user?.city || ""} />
+              <Field name="address" label="Address" className="sm:col-span-2" defaultValue={chosen?.address || user?.address || ""} />
+              <Field name="postalCode" label="Postal code" defaultValue={chosen?.postalCode || user?.postalCode || ""} />
             </div>
+            {mine.length > 0 ? (
+              <label className="text-sm">
+                Saved address
+                <select className="field mt-1" value={addressId} onChange={(event) => setAddressId(event.target.value)}>
+                  <option value="profile">Profile address</option>
+                  {mine.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label} · {item.city}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {canTender ? (
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={saveAddress} onChange={(event) => setSaveAddress(event.target.checked)} />
+                Save this address to the salon
+              </label>
+            ) : null}
+            {user && canTender ? (
+              <fieldset className="grid gap-3">
+                <legend className="text-sm">Salon tender</legend>
+                <label className="surface flex cursor-pointer items-center gap-3 p-3 text-sm">
+                  <input type="checkbox" checked={useWallet} onChange={(event) => setUseWallet(event.target.checked)} />
+                  <span>
+                    Use wallet · {money(user.walletBalance)}
+                    <span className="block text-muted">Applied after points, up to the amount due.</span>
+                  </span>
+                </label>
+                <label className="text-sm">
+                  Loyalty points · {user.loyaltyPoints.toLocaleString()} available · 100 points = $1, up to 30% of the goods
+                  <input
+                    className="field mt-1"
+                    type="number"
+                    min={0}
+                    max={user.loyaltyPoints}
+                    step={100}
+                    value={points}
+                    onChange={(event) => setPoints(Math.max(0, Number(event.target.value) || 0))}
+                  />
+                </label>
+              </fieldset>
+            ) : null}
             <fieldset>
               <legend className="text-sm">Payment</legend>
               <div className="mt-2 grid gap-2">
@@ -143,7 +206,7 @@ function CheckoutPage() {
                 ))}
               </div>
             </fieldset>
-            {method === "card" ? (
+            {method === "card" && settled.due > 0 ? (
               <div className="grid gap-4 sm:grid-cols-3">
                 <Field name="cardNumber" label="Card number" placeholder="4242424242424242" className="sm:col-span-3" />
                 <Field name="cardExpiry" label="Expiry" placeholder="12/28" />
@@ -156,7 +219,7 @@ function CheckoutPage() {
             </label>
             {error ? <p className="text-sm text-brass">{error}</p> : null}
             <button className="btn btn-pine" type="submit">
-              Place order · {money(priced.total)}
+              Place order · {money(settled.due)}
             </button>
           </form>
         </div>
@@ -168,7 +231,9 @@ function CheckoutPage() {
                 <span>
                   {item.product.name}
                   <span className="block text-muted">
-                    {item.size ? `Size ${item.size} · ` : ""}×{item.quantity}
+                    {item.size ? `Size ${item.size}` : ""}
+                    {item.color ? `${item.size ? " · " : ""}${item.color}` : ""}
+                    {item.size || item.color ? " · " : ""}×{item.quantity}
                   </span>
                 </span>
                 <span className="tabular-nums">{money(item.product.price * item.quantity)}</span>
@@ -180,7 +245,9 @@ function CheckoutPage() {
             <Row label="Reduction" value={priced.discount ? `−${money(priced.discount)}` : "—"} />
             <Row label="Shipping" value={priced.shipping ? money(priced.shipping) : "Complimentary"} />
             <Row label="Tax" value={money(priced.tax)} />
-            <Row label="Due" value={money(priced.total)} />
+            {settled.loyaltyDiscount ? <Row label="Points" value={`−${money(settled.loyaltyDiscount)}`} /> : null}
+            {settled.walletApplied ? <Row label="Wallet" value={`−${money(settled.walletApplied)}`} /> : null}
+            <Row label="Due" value={money(settled.due)} />
           </div>
         </aside>
       </div>

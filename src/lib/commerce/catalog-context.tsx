@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { fetchCategories, fetchProducts } from "./api";
 import { FALLBACK_CATEGORIES, FALLBACK_PRODUCTS } from "./catalog";
 import { useCommerce } from "./store";
-import type { Category, Product } from "./types";
+import type { Category, Product, ProductEdit } from "./types";
 
 type CatalogValue = {
   products: Product[];
@@ -47,17 +47,33 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   }, [tick]);
 
   const customProducts = useCommerce((state) => state.customProducts);
+  const productEdits = useCommerce((state) => state.productEdits);
 
-  const value = useMemo(
-    () => ({
-      products: [...products, ...customProducts.filter((item) => !products.some((product) => product.id === item.id))],
+  const value = useMemo(() => {
+    const apply = (product: Product): Product => {
+      const edit: ProductEdit | undefined = productEdits?.[product.id];
+      if (!edit) return product;
+      return {
+        ...product,
+        ...(edit.name ? { name: edit.name } : {}),
+        ...(edit.short_desc ? { short_desc: edit.short_desc } : {}),
+        ...(edit.long_description ? { long_description: edit.long_description } : {}),
+        ...(edit.badge ? { badge: edit.badge } : {}),
+        ...(edit.category ? { category: edit.category } : {}),
+      };
+    };
+    const base = products.map(apply);
+    const extras = customProducts
+      .filter((item) => !base.some((product) => product.id === item.id))
+      .map(apply);
+    return {
+      products: [...base, ...extras],
       categories,
       source,
       loading,
       refresh: () => setTick((n) => n + 1),
-    }),
-    [products, customProducts, categories, source, loading],
-  );
+    };
+  }, [products, customProducts, productEdits, categories, source, loading]);
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;
 }
