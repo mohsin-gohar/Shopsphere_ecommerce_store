@@ -14,7 +14,7 @@ const SECTIONS = [
   {
     id: "returns",
     title: "Returns",
-    body: "Unworn pieces with tags may come back within 30 days of delivery. Altered garments, earrings, and final-sale marks cannot return. Start from your receipt or the tracking desk. Refunds use the original tender, or your ShopSphere wallet if you ask.",
+    body: "Unworn pieces with tags may come back within 30 days of delivery. Altered garments, earrings, and final-sale marks cannot return. Start from your receipt or the tracking desk. Approved refunds credit the ShopSphere wallet on the matching client account.",
   },
   {
     id: "privacy",
