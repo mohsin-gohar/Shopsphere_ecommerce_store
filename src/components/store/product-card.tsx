@@ -3,6 +3,7 @@ import { Heart, Star } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { money } from "@/lib/commerce/pricing";
+import { colorsFor, sizesFor } from "@/lib/commerce/house";
 import { useCommerce } from "@/lib/commerce/store";
 import type { Product } from "@/lib/commerce/types";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ export function ProductCard({ product }: { product: Product }) {
   const stock = useCommerce((state) => state.stockOf(product.id));
   const compared = useCommerce((state) => (state.compare ?? []).includes(product.id));
   const toggleCompare = useCommerce((state) => state.toggleCompare);
+  const addToCart = useCommerce((state) => state.addToCart);
   const discount = product.oldPrice && product.oldPrice > price ? Math.round((1 - price / product.oldPrice) * 100) : 0;
 
   return (
@@ -93,16 +95,29 @@ export function ProductCard({ product }: { product: Product }) {
           <span className={stock === 0 ? "text-brass" : stock <= 3 ? "text-pine" : "text-muted"}>
             {stock === 0 ? "Sold out" : stock <= 3 ? `Only ${stock} left` : "In the atelier"}
           </span>
-          <button
-            type="button"
-            className="underline"
-            onClick={() => {
-              const result = toggleCompare(product.id);
-              if (!result.ok) toast.error(result.message);
-            }}
-          >
-            {compared ? "In compare" : "Compare"}
-          </button>
+          <span className="flex gap-3">
+            <button
+              type="button"
+              className="underline disabled:text-muted"
+              disabled={stock === 0}
+              onClick={() => {
+                const result = addToCart(product, 1, sizesFor(product.category)[0], colorsFor(product.category)[0]);
+                toast[result.ok ? "success" : "error"](result.message);
+              }}
+            >
+              Add
+            </button>
+            <button
+              type="button"
+              className="underline"
+              onClick={() => {
+                const result = toggleCompare(product.id);
+                if (!result.ok) toast.error(result.message);
+              }}
+            >
+              {compared ? "In compare" : "Compare"}
+            </button>
+          </span>
         </div>
       </div>
     </article>

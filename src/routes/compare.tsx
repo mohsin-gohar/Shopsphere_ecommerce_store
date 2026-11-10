@@ -27,7 +27,7 @@ function ComparePage() {
         {picked.length === 0 ? (
           <div className="mt-10">
             <p>Nothing is on the bench yet.</p>
-            <Link to="/shop" search={{ q: "", category: "All" }} className="btn btn-pine mt-6">
+            <Link to="/shop" search={{ q: "", category: "All", deal: "" }} className="btn btn-pine mt-6">
               Browse the edit
             </Link>
           </div>

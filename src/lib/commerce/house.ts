@@ -13,7 +13,7 @@ export const FAQS: FaqItem[] = [
     category: "shipping",
     question: "How fast is a studio order?",
     answer:
-      "In-stock pieces leave within two working days. Made-to-measure tailoring is quoted separately and usually takes ten to fourteen days before it is handed to the carrier.",
+      "In-stock pieces leave within two working days. Standard arrival is four to six days. Express, chosen at checkout, adds $16 and aims for one to two days. Gift wrap with a house card is $6.",
   },
   {
     id: "ret-1",

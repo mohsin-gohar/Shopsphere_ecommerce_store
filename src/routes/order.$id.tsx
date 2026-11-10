@@ -59,6 +59,8 @@ function OrderPage() {
                 <Item k="Carrier" v={order.carrier} />
                 <Item k="Arrival" v={order.estimatedDeliveryDate} />
                 <Item k="Status" v={order.status} />
+                {order.shippingMethod ? <Item k="Delivery" v={order.shippingMethod} /> : null}
+                {allowed && order.giftWrap ? <Item k="Wrap" v="House gift wrap" /> : null}
                 {allowed ? (
                   <Item k="Payment" v={`${PAYMENT_LABEL[order.customer.paymentMethod] ?? order.customer.paymentMethod}${order.customer.cardLast4 ? ` ···· ${order.customer.cardLast4}` : ""}`} />
                 ) : null}
@@ -95,7 +97,7 @@ function OrderPage() {
               <Link to="/track" search={{ id: order.id }} className="btn btn-pine">
                 Track this order
               </Link>
-              <Link to="/shop" search={{ q: "", category: "All" }} className="btn btn-ghost">
+              <Link to="/shop" search={{ q: "", category: "All", deal: "" }} className="btn btn-ghost">
                 Continue browsing
               </Link>
             </div>

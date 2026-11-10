@@ -20,6 +20,10 @@ function CartPage() {
   const extras = useCommerce((state) => state.customCoupons);
   const applyCoupon = useCommerce((state) => state.applyCoupon);
   const clearCoupon = useCommerce((state) => state.clearCoupon);
+  const saved = useCommerce((state) => state.saved ?? []);
+  const saveForLater = useCommerce((state) => state.saveForLater);
+  const moveToBag = useCommerce((state) => state.moveToBag);
+  const removeSaved = useCommerce((state) => state.removeSaved);
   const [code, setCode] = useState("");
   const subtotal = cartSubtotal(cart);
   const priced = useBagQuote(subtotal);
@@ -31,7 +35,7 @@ function CartPage() {
         {cart.length === 0 ? (
           <div className="surface mt-8 px-6 py-16 text-center">
             <p className="font-display text-3xl">Nothing here yet.</p>
-            <Link to="/shop" search={{ q: "", category: "All" }} className="btn btn-pine mt-6">
+            <Link to="/shop" search={{ q: "", category: "All", deal: "" }} className="btn btn-pine mt-6">
               Shop the edit
             </Link>
           </div>
@@ -68,6 +72,16 @@ function CartPage() {
                       </div>
                       <button type="button" className="inline-flex items-center gap-1 text-sm text-muted" onClick={() => remove(item.product.id, item.size, item.color)}>
                         <Trash2 className="size-4" /> Remove
+                      </button>
+                      <button
+                        type="button"
+                        className="text-sm underline"
+                        onClick={() => {
+                          const result = saveForLater(item.product.id, item.size, item.color);
+                          toast[result.ok ? "success" : "error"](result.message);
+                        }}
+                      >
+                        Save for later
                       </button>
                     </div>
                   </div>
@@ -118,6 +132,42 @@ function CartPage() {
             </aside>
           </div>
         )}
+        {saved.length > 0 ? (
+          <section className="mt-12">
+            <h2 className="text-3xl">Saved for later</h2>
+            <ul className="mt-4 grid gap-4">
+              {saved.map((item) => (
+                <li key={lineKey(item)} className="surface grid grid-cols-[6rem_1fr] gap-4 p-3">
+                  <Link to="/product/$id" params={{ id: String(item.product.id) }} className="aspect-[4/5] overflow-hidden rounded-sm bg-line">
+                    <ProductVisual product={item.product} />
+                  </Link>
+                  <div>
+                    <p className="font-medium">{item.product.name}</p>
+                    <p className="text-sm text-muted">
+                      {item.size ? `Size ${item.size}` : item.product.category}
+                      {item.color ? ` · ${item.color}` : ""} · ×{item.quantity}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        className="text-sm underline"
+                        onClick={() => {
+                          const result = moveToBag(item.product.id, item.size, item.color);
+                          toast[result.ok ? "success" : "error"](result.message);
+                        }}
+                      >
+                        Move to bag
+                      </button>
+                      <button type="button" className="text-sm text-muted underline" onClick={() => removeSaved(item.product.id, item.size, item.color)}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </div>
     </StoreShell>
   );

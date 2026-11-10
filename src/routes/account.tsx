@@ -21,6 +21,7 @@ function AccountPage() {
   const addAddress = useCommerce((state) => state.addAddress);
   const removeAddress = useCommerce((state) => state.removeAddress);
   const [saved, setSaved] = useState(false);
+  const [orderFilter, setOrderFilter] = useState<"All" | "Open" | "Delivered" | "Cancelled">("All");
 
   if (!hydrated) {
     return (
@@ -144,24 +145,44 @@ function AccountPage() {
           </div>
           <div>
             <h2 className="font-display text-2xl">Orders</h2>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {(["All", "Open", "Delivered", "Cancelled"] as const).map((item) => (
+                <button key={item} type="button" className="chip" data-on={orderFilter === item} onClick={() => setOrderFilter(item)}>
+                  {item}
+                </button>
+              ))}
+            </div>
             {mine.length === 0 ? (
               <p className="mt-3 text-muted">No orders for this email yet.</p>
             ) : (
               <ul className="mt-3 grid gap-3">
-                {mine.map((order) => (
+                {mine
+                  .filter((order) => {
+                    if (orderFilter === "Open") return order.status !== "Delivered" && order.status !== "Cancelled";
+                    if (orderFilter === "Delivered") return order.status === "Delivered";
+                    if (orderFilter === "Cancelled") return order.status === "Cancelled";
+                    return true;
+                  })
+                  .map((order) => (
                   <li key={order.id} className="surface p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-medium">{order.id}</p>
                         <p className="text-sm text-muted">
                           {order.date} · {order.status}
+                          {order.shippingMethod ? ` · ${order.shippingMethod}` : ""}
                         </p>
                       </div>
                       <p className="tabular-nums">{money(order.total)}</p>
                     </div>
-                    <Link to="/track" search={{ id: order.id }} className="mt-2 inline-block text-sm underline">
-                      Track
-                    </Link>
+                    <div className="mt-2 flex gap-4 text-sm">
+                      <Link to="/track" search={{ id: order.id }} className="underline">
+                        Track
+                      </Link>
+                      <Link to="/order/$id" params={{ id: order.id }} className="underline">
+                        Receipt
+                      </Link>
+                    </div>
                   </li>
                 ))}
               </ul>

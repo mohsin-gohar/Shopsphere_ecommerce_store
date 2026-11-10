@@ -48,6 +48,24 @@ export function quote(subtotal: number, coupon: string | null, extras: CouponRul
   };
 }
 
+export const EXPRESS_FEE = 16;
+export const WRAP_FEE = 6;
+
+export function withCarriage(
+  priced: ReturnType<typeof quote>,
+  extras?: { express?: boolean; giftWrap?: boolean },
+) {
+  const expressFee = extras?.express ? EXPRESS_FEE : 0;
+  const wrapFee = extras?.giftWrap ? WRAP_FEE : 0;
+  return {
+    ...priced,
+    shipping: round2(priced.shipping + expressFee),
+    total: round2(priced.total + expressFee + wrapFee),
+    expressFee,
+    wrapFee,
+  };
+}
+
 export function couponMessage(code: string | null, extras: CouponRule[] = []) {
   if (!code) return null;
   const rule = [...extras, ...BUILTIN].find((item) => item.code === code);

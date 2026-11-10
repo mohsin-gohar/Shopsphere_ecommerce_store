@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Menu, Search, ShoppingBag, UserRound, X, Minus, Plus, Trash2, Heart, Columns2 } from "lucide-react";
+import { Menu, Search, ShoppingBag, UserRound, X, Minus, Plus, Trash2, Heart, Columns2, Bell } from "lucide-react";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { ProductVisual } from "@/components/store/product-card";
 import { useCatalog } from "@/lib/commerce/catalog-context";
@@ -7,11 +7,12 @@ import { couponMessage, money } from "@/lib/commerce/pricing";
 import { cartCount, cartSubtotal, lineKey, useBagQuote, useCommerce } from "@/lib/commerce/store";
 
 const NAV = [
-  { label: "Shop", to: "/shop" as const, search: { q: "", category: "All" } },
-  { label: "Women", to: "/shop" as const, search: { q: "", category: "Women" } },
-  { label: "Men", to: "/shop" as const, search: { q: "", category: "Men" } },
-  { label: "Shoes", to: "/shop" as const, search: { q: "", category: "Shoes" } },
-  { label: "Objects", to: "/shop" as const, search: { q: "", category: "Accessories" } },
+  { label: "Shop", to: "/shop" as const, search: { q: "", category: "All", deal: "" } },
+  { label: "Women", to: "/shop" as const, search: { q: "", category: "Women", deal: "" } },
+  { label: "Men", to: "/shop" as const, search: { q: "", category: "Men", deal: "" } },
+  { label: "Shoes", to: "/shop" as const, search: { q: "", category: "Shoes", deal: "" } },
+  { label: "Objects", to: "/shop" as const, search: { q: "", category: "Accessories", deal: "" } },
+  { label: "Sale", to: "/shop" as const, search: { q: "", category: "All", deal: "1" } },
 ];
 
 export function StoreShell({ children }: { children: ReactNode }) {
@@ -41,14 +42,21 @@ function SiteHeader() {
   const user = useCommerce((state) => state.user);
   const hidden = useCommerce((state) => state.hidden);
   const compareCount = useCommerce((state) => (state.compare ?? []).length);
+  const notes = useCommerce((state) => state.notes ?? []);
+  const rememberSearch = useCommerce((state) => state.rememberSearch);
+  const markNotesRead = useCommerce((state) => state.markNotesRead);
+  const recentSearches = useCommerce((state) => state.recentSearches ?? []);
   const { products } = useCatalog();
   const [menu, setMenu] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const unread = notes.filter((item) => !item.read).length;
 
   useEffect(() => {
     setMenu(false);
     setSearching(false);
+    setNotesOpen(false);
   }, [path]);
 
   const suggestions =
@@ -60,7 +68,8 @@ function SiteHeader() {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    void navigate({ to: "/shop", search: { q: query.trim(), category: "All" } });
+    rememberSearch(query);
+    void navigate({ to: "/shop", search: { q: query.trim(), category: "All", deal: "" } });
     setSearching(false);
     setMenu(false);
   };
@@ -68,8 +77,20 @@ function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur">
       <div className="bg-pine px-4 py-2 text-center text-xs text-cream">
-        Complimentary shipping over $150 · Codes STUDENT20, WELCOME10, SAVE15
+        Complimentary shipping over $150 · Express +$16 · Codes STUDENT20, WELCOME10, SAVE15
       </div>
+      {hydrated && unread > 0 ? (
+        <button
+          type="button"
+          className="w-full bg-brass/20 px-4 py-1.5 text-center text-xs lg:hidden"
+          onClick={() => {
+            setNotesOpen(true);
+            markNotesRead();
+          }}
+        >
+          {unread} new house {unread === 1 ? "note" : "notes"}
+        </button>
+      ) : null}
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
         <button type="button" className="grid size-11 place-items-center lg:hidden" aria-label="Open menu" onClick={() => setMenu(true)}>
           <Menu className="size-5" />
@@ -95,10 +116,22 @@ function SiteHeader() {
             <Heart className="size-5" fill={hydrated && wishes > 0 ? "currentColor" : "none"} />
             {hydrated && wishes > 0 ? <Badge value={wishes} /> : null}
           </Link>
-          <Link to="/compare" className="relative grid size-11 place-items-center" aria-label="Compare">
+          <Link to="/compare" className="relative hidden size-11 place-items-center md:grid" aria-label="Compare">
             <Columns2 className="size-5" />
             {hydrated && compareCount > 0 ? <Badge value={compareCount} /> : null}
           </Link>
+          <button
+            type="button"
+            className="relative hidden size-11 place-items-center lg:grid"
+            aria-label="House notes"
+            onClick={() => {
+              setNotesOpen((open) => !open);
+              markNotesRead();
+            }}
+          >
+            <Bell className="size-5" />
+            {hydrated && unread > 0 ? <Badge value={unread} /> : null}
+          </button>
           <Link
             to={user?.role === "admin" ? "/admin" : "/account"}
             className="grid size-11 place-items-center"
@@ -140,8 +173,55 @@ function SiteHeader() {
               </li>
             ))}
           </ul>
+        ) : query.trim().length < 2 && recentSearches.length > 0 ? (
+          <div className="mx-auto flex max-w-7xl flex-wrap gap-2 px-4 pb-4 sm:px-6">
+            {recentSearches.map((item) => (
+              <button
+                key={item}
+                type="button"
+                className="chip"
+                onClick={() => {
+                  setQuery(item);
+                  rememberSearch(item);
+                  void navigate({ to: "/shop", search: { q: item, category: "All", deal: "" } });
+                  setSearching(false);
+                }}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
         ) : null}
         </>
+      ) : null}
+      {notesOpen ? (
+        <div className="border-t border-line bg-cream">
+          <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-display text-2xl">House notes</p>
+              <button type="button" className="text-sm underline" onClick={() => setNotesOpen(false)}>
+                Close
+              </button>
+            </div>
+            {notes.length === 0 ? (
+              <p className="mt-3 text-sm text-muted">Orders, cancellations, and returns land here on this browser.</p>
+            ) : (
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+                {notes.slice(0, 6).map((note) => (
+                  <li key={note.id} className="text-sm">
+                    <p className="font-medium">{note.title}</p>
+                    <p className="text-muted">{note.body}</p>
+                    {note.orderId ? (
+                      <Link to="/order/$id" params={{ id: note.orderId }} className="underline" onClick={() => setNotesOpen(false)}>
+                        Open receipt
+                      </Link>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       ) : null}
       {menu ? (
         <div className="fixed inset-0 z-50 bg-ink/40 lg:hidden">
@@ -163,6 +243,17 @@ function SiteHeader() {
               ))}
               <Link to="/wishlist" className="py-3 text-lg">Wishlist</Link>
               <Link to="/compare" className="py-3 text-lg">Compare</Link>
+              <button
+                type="button"
+                className="py-3 text-left text-lg"
+                onClick={() => {
+                  setMenu(false);
+                  setNotesOpen(true);
+                  markNotesRead();
+                }}
+              >
+                House notes{unread ? ` (${unread})` : ""}
+              </button>
               <Link to="/about" className="py-3 text-lg">The House</Link>
               <Link to="/track" search={{ id: "" }} className="py-3 text-lg">Track an order</Link>
               <Link to="/faq" className="py-3 text-lg">Questions</Link>
@@ -198,7 +289,7 @@ function SiteFooter() {
         <div>
           <p className="text-xs tracking-[0.18em] text-brass uppercase">Visit</p>
           <ul className="mt-3 grid gap-2 text-sm">
-            <li><Link to="/shop" search={{ q: "", category: "All" }} className="text-cream/85 hover:text-cream">The edit</Link></li>
+            <li><Link to="/shop" search={{ q: "", category: "All", deal: "" }} className="text-cream/85 hover:text-cream">The edit</Link></li>
             <li><Link to="/wishlist" className="text-cream/85 hover:text-cream">Wishlist</Link></li>
             <li><Link to="/compare" className="text-cream/85 hover:text-cream">Compare</Link></li>
             <li><Link to="/cart" className="text-cream/85 hover:text-cream">Your bag</Link></li>
@@ -268,7 +359,7 @@ export function CartDrawer() {
             <div className="py-16 text-center">
               <p className="font-display text-3xl">The bag is empty.</p>
               <p className="mt-2 text-sm text-muted">The edit is waiting on the floor.</p>
-              <Link to="/shop" search={{ q: "", category: "All" }} className="btn btn-pine mt-6" onClick={() => setCartOpen(false)}>
+              <Link to="/shop" search={{ q: "", category: "All", deal: "" }} className="btn btn-pine mt-6" onClick={() => setCartOpen(false)}>
                 Shop the edit
               </Link>
             </div>

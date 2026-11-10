@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SlidersHorizontal } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ProductCard } from "@/components/store/product-card";
 import { StoreShell } from "@/components/store/chrome";
 import { useCatalog } from "@/lib/commerce/catalog-context";
@@ -11,6 +11,7 @@ export const Route = createFileRoute("/shop")({
   validateSearch: (search: Record<string, unknown>) => ({
     q: typeof search.q === "string" ? search.q : "",
     category: typeof search.category === "string" ? search.category : "All",
+    deal: search.deal === "1" ? "1" : "",
   }),
   component: ShopPage,
 });
@@ -25,18 +26,26 @@ const SORTS: Array<{ id: SortOption; label: string }> = [
 ];
 
 function ShopPage() {
-  const { q, category } = Route.useSearch();
+  const { q, category, deal } = Route.useSearch();
   const navigate = Route.useNavigate();
   const { products, loading, source } = useCatalog();
   const hidden = useCommerce((state) => state.hidden);
+  const stock = useCommerce((state) => state.stock);
+  const stockOf = useCommerce((state) => state.stockOf);
   const priceOverrides = useCommerce((state) => state.priceOverrides);
   const priceFor = (product: { id: number; price: number }) => priceOverrides[product.id] ?? product.price;
   const [sortBy, setSortBy] = useState<SortOption>("featured");
   const [minRating, setMinRating] = useState(0);
   const [badge, setBadge] = useState("All");
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
+  const [onSale, setOnSale] = useState(deal === "1");
+  const [inStock, setInStock] = useState(false);
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    if (deal === "1") setOnSale(true);
+  }, [deal]);
 
   const ceiling = Math.max(200, ...products.map((product) => priceFor(product)), 0);
   const cap = maxPrice ?? ceiling;
@@ -53,6 +62,8 @@ function ShopPage() {
       if (category !== "All" && product.category !== category) return false;
       if (query && !`${product.name} ${product.short_desc} ${product.category}`.toLowerCase().includes(query)) return false;
       if (priceFor(product) > cap) return false;
+      if (onSale && !(product.oldPrice && product.oldPrice > priceFor(product))) return false;
+      if (inStock && stockOf(product.id) <= 0) return false;
       if (product.rating < minRating) return false;
       if (badge !== "All" && product.badge !== badge) return false;
       return true;
@@ -69,7 +80,7 @@ function ShopPage() {
       return b.reviews * b.rating - a.reviews * a.rating;
     });
     return scored;
-  }, [products, hidden, category, q, cap, minRating, badge, sortBy, priceOverrides]);
+  }, [products, hidden, category, q, cap, minRating, badge, sortBy, priceOverrides, onSale, inStock, stock, stockOf]);
 
   const perPage = 12;
   const pages = Math.max(1, Math.ceil(filtered.length / perPage));
@@ -79,7 +90,7 @@ function ShopPage() {
 
   const setCategory = (next: string) => {
     setPage(1);
-    void navigate({ search: { q, category: next } });
+    void navigate({ search: { q, category: next, deal } });
   };
 
   return (
@@ -93,6 +104,7 @@ function ShopPage() {
           </p>
         </div>
         {q ? <p className="mt-2 text-muted">Results for “{q}”.</p> : null}
+        {onSale ? <p className="mt-2 text-muted">Showing pieces below their previous price.</p> : null}
 
         <div className="mt-6 flex gap-2 overflow-x-auto pb-1">
           {cats.map((item) => (
@@ -128,6 +140,30 @@ function ShopPage() {
         <div className="mt-6 grid gap-8 lg:grid-cols-[16rem_1fr]">
           <aside className={filtersOpen ? "surface h-fit p-4" : "surface hidden h-fit p-4 lg:block"}>
             <p className="text-xs tracking-[0.16em] text-muted uppercase">Refine</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="chip"
+                data-on={onSale}
+                onClick={() => {
+                  setOnSale((value) => !value);
+                  setPage(1);
+                }}
+              >
+                On sale
+              </button>
+              <button
+                type="button"
+                className="chip"
+                data-on={inStock}
+                onClick={() => {
+                  setInStock((value) => !value);
+                  setPage(1);
+                }}
+              >
+                In stock
+              </button>
+            </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {[
                 { label: "Any price", value: null as number | null },
@@ -205,8 +241,10 @@ function ShopPage() {
                 setMinRating(0);
                 setBadge("All");
                 setSortBy("featured");
+                setOnSale(false);
+                setInStock(false);
                 setPage(1);
-                void navigate({ search: { q: "", category: "All" } });
+                void navigate({ search: { q: "", category: "All", deal: "" } });
               }}
             >
               Clear refinements

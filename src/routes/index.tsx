@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ProductCard, ProductVisual } from "@/components/store/product-card";
 import { StoreShell } from "@/components/store/chrome";
@@ -19,6 +19,10 @@ function Home() {
   const recent = recentIds.map((id) => visible.find((product) => product.id === id)).filter((product) => product !== undefined).slice(0, 4);
   const arrivals = visible.filter((product) => product.badge === "New" || product.badge === "Limited").slice(0, 4);
   const spotlight = arrivals.length >= 4 ? arrivals : visible.slice(4, 8);
+  const deals = [...visible]
+    .filter((product) => product.oldPrice && product.oldPrice > product.price)
+    .sort((a, b) => (b.oldPrice! - b.price) / b.oldPrice! - (a.oldPrice! - a.price) / a.oldPrice!)
+    .slice(0, 4);
 
   return (
     <StoreShell>
@@ -30,7 +34,7 @@ function Home() {
             Clothing, shoes, and objects edited for people who would rather own fewer, better things.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/shop" search={{ q: "", category: "All" }} className="btn btn-pine">
+            <Link to="/shop" search={{ q: "", category: "All", deal: "" }} className="btn btn-pine">
               Shop the edit
             </Link>
             <Link to="/about" className="btn btn-ghost">
@@ -61,7 +65,7 @@ function Home() {
       <section className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex items-end justify-between gap-4">
           <h2 className="text-3xl sm:text-4xl">Four rooms of the house</h2>
-          <Link to="/shop" search={{ q: "", category: "All" }} className="text-sm underline decoration-line underline-offset-4">
+          <Link to="/shop" search={{ q: "", category: "All", deal: "" }} className="text-sm underline decoration-line underline-offset-4">
             All pieces
           </Link>
         </div>
@@ -70,7 +74,7 @@ function Home() {
             <Link
               key={category.id}
               to="/shop"
-              search={{ q: "", category: category.name }}
+              search={{ q: "", category: category.name, deal: "" }}
               className="group overflow-hidden rounded-md bg-line"
             >
               <div className="aspect-[4/5] overflow-hidden">
@@ -87,6 +91,27 @@ function Home() {
           ))}
         </div>
       </section>
+
+      {deals.length > 0 ? (
+        <section className="mx-auto mt-16 max-w-7xl px-4 sm:px-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs tracking-[0.18em] text-brass uppercase">Today's reductions</p>
+              <h2 className="mt-2 text-3xl sm:text-4xl">
+                Ends in <DealClock />
+              </h2>
+            </div>
+            <Link to="/shop" search={{ q: "", category: "All", deal: "1" }} className="text-sm underline decoration-line underline-offset-4">
+              All reductions
+            </Link>
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-4">
+            {deals.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="mx-auto mt-16 max-w-7xl px-4 sm:px-6">
         <h2 className="text-3xl sm:text-4xl">Most requested</h2>
@@ -142,6 +167,26 @@ function Home() {
       <Newsletter />
     </StoreShell>
   );
+}
+
+function DealClock() {
+  const [label, setLabel] = useState("today");
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      const end = new Date(now);
+      end.setHours(24, 0, 0, 0);
+      const ms = Math.max(0, end.getTime() - now.getTime());
+      const hours = Math.floor(ms / 3_600_000);
+      const minutes = Math.floor((ms % 3_600_000) / 60_000);
+      const seconds = Math.floor((ms % 60_000) / 1000);
+      setLabel(`${hours}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`);
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  return <span className="tabular-nums">{label}</span>;
 }
 
 function Stat({ k, v }: { k: string; v: string }) {

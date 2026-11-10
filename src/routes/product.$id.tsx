@@ -58,7 +58,7 @@ function ProductPage() {
       <StoreShell>
         <div className="mx-auto max-w-lg px-4 py-24 text-center">
           <h1 className="text-4xl">This piece is not on the floor.</h1>
-          <Link to="/shop" search={{ q: "", category: "All" }} className="btn btn-pine mt-6">
+          <Link to="/shop" search={{ q: "", category: "All", deal: "" }} className="btn btn-pine mt-6">
             Return to the edit
           </Link>
         </div>
@@ -79,11 +79,11 @@ function ProductPage() {
     <StoreShell>
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <p className="text-sm text-muted">
-          <Link to="/shop" search={{ q: "", category: "All" }} className="underline-offset-4 hover:underline">
+          <Link to="/shop" search={{ q: "", category: "All", deal: "" }} className="underline-offset-4 hover:underline">
             Shop
           </Link>
           <span> / </span>
-          <Link to="/shop" search={{ q: "", category: product.category }} className="underline-offset-4 hover:underline">
+          <Link to="/shop" search={{ q: "", category: product.category, deal: "" }} className="underline-offset-4 hover:underline">
             {product.category}
           </Link>
         </p>
@@ -111,6 +111,26 @@ function ProductPage() {
             </p>
             <p className="mt-4 max-w-prose text-muted">{product.long_description}</p>
             <p className="mt-4 text-sm">{stock > 0 ? `${stock} in the atelier` : "Sold out"}</p>
+            <p className="mt-2 text-sm text-muted">
+              Standard arrives in 4–6 days. Express is 1–2 days at checkout for $16. Islamabad and Lahore fittings stay complimentary over $150.
+            </p>
+            <button
+              type="button"
+              className="mt-3 text-sm underline"
+              onClick={() => {
+                const url = window.location.href;
+                if (navigator.clipboard?.writeText) {
+                  void navigator.clipboard.writeText(url).then(
+                    () => toast.success("Link copied."),
+                    () => toast.message(url),
+                  );
+                } else {
+                  toast.message(url);
+                }
+              }}
+            >
+              Copy link
+            </button>
 
             <p className="mt-6 text-sm">Color</p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -319,6 +339,39 @@ function ProductPage() {
               ))}
           </div>
         </section>
+
+        {related.length >= 2 ? (
+          <section className="mt-14">
+            <h2 className="text-3xl">Often bought together</h2>
+            <div className="surface mt-5 grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+              <ul className="grid gap-2 text-sm">
+                {related.slice(0, 2).map((item) => (
+                  <li key={item.id} className="flex justify-between gap-3">
+                    <Link to="/product/$id" params={{ id: String(item.id) }} className="underline-offset-4 hover:underline">
+                      {item.name}
+                    </Link>
+                    <span className="tabular-nums">{money(priceOf(item))}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                className="btn btn-pine"
+                onClick={() => {
+                  let added = 0;
+                  for (const item of related.slice(0, 2)) {
+                    const result = addToCart(item, 1, sizesFor(item.category)[0], colorsFor(item.category)[0]);
+                    if (result.ok) added += 1;
+                    else toast.error(result.message);
+                  }
+                  if (added > 0) toast.success(added === 2 ? "Both pieces are in the bag." : "What we still have is in the bag.");
+                }}
+              >
+                Add both · {money(related.slice(0, 2).reduce((sum, item) => sum + priceOf(item), 0))}
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         {related.length > 0 ? (
           <section className="mt-14">

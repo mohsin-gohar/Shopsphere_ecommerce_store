@@ -73,6 +73,8 @@ export interface Order {
   trackingNumber: string;
   carrier: string;
   estimatedDeliveryDate: string;
+  shippingMethod?: "Standard" | "Express";
+  giftWrap?: boolean;
 }
 
 export interface SavedAddress {
@@ -171,6 +173,15 @@ export interface ProductEdit {
   long_description?: string;
   badge?: string;
   category?: string;
+}
+
+export interface HouseNote {
+  id: string;
+  title: string;
+  body: string;
+  orderId?: string;
+  createdAt: string;
+  read: boolean;
 }
 
 export interface FaqItem {

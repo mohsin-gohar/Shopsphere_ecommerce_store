@@ -42,7 +42,7 @@ function WishlistPage() {
         {saved.length === 0 ? (
           <div className="surface mt-8 px-6 py-16 text-center">
             <p className="font-display text-3xl">Your list is quiet.</p>
-            <Link to="/shop" search={{ q: "", category: "All" }} className="btn btn-pine mt-6">
+            <Link to="/shop" search={{ q: "", category: "All", deal: "" }} className="btn btn-pine mt-6">
               Browse the edit
             </Link>
           </div>

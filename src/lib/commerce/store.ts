@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { FALLBACK_PRODUCTS, INITIAL_SAMPLE_ORDERS } from "./catalog";
-import { quote, round2, settle } from "./pricing";
+import { quote, round2, settle, withCarriage } from "./pricing";
 import { hashSecret, passwordMatches } from "./secret";
 import type {
   AuthUser,
@@ -10,6 +10,7 @@ import type {
   ContactInquiry,
   CustomCoupon,
   CustomerInfo,
+  HouseNote,
   LetterSubscriber,
   Order,
   Product,
@@ -62,6 +63,9 @@ type CommerceState = {
   subscribers: LetterSubscriber[];
   ownedOrderIds: string[];
   loginAttempts: Record<string, { count: number; until: number }>;
+  saved: CartItem[];
+  recentSearches: string[];
+  notes: HouseNote[];
   setHydrated: () => void;
   login: (email: string, password: string) => { ok: true; user: AuthUser } | { ok: false; error: string };
   register: (input: { name: string; email: string; password: string; phone: string }) => { ok: true; user: AuthUser } | { ok: false; error: string };
@@ -76,12 +80,17 @@ type CommerceState = {
   setQty: (id: number, quantity: number, size?: string, color?: string) => void;
   removeFromCart: (id: number, size?: string, color?: string) => void;
   clearCart: () => void;
+  saveForLater: (id: number, size?: string, color?: string) => { ok: boolean; message: string };
+  moveToBag: (id: number, size?: string, color?: string) => { ok: boolean; message: string };
+  removeSaved: (id: number, size?: string, color?: string) => void;
+  rememberSearch: (query: string) => void;
+  markNotesRead: () => void;
   toggleWish: (id: number) => void;
   applyCoupon: (code: string) => { ok: boolean; message: string };
   clearCoupon: () => void;
   placeOrder: (
     customer: CustomerInfo,
-    options?: { useWallet?: boolean; points?: number; saveAddress?: boolean },
+    options?: { useWallet?: boolean; points?: number; saveAddress?: boolean; express?: boolean; giftWrap?: boolean },
   ) => Order | null;
   updateOrderStatus: (id: string, status: Order["status"]) => void;
   cancelOrder: (id: string) => { ok: boolean; message: string };
@@ -238,6 +247,20 @@ function noteSuccess(attempts: CommerceState["loginAttempts"], email: string) {
   const next = { ...attempts };
   delete next[email];
   return next;
+}
+
+function noteList(current: HouseNote[] | undefined, title: string, body: string, orderId?: string): HouseNote[] {
+  return [
+    {
+      id: `NT-${Date.now().toString().slice(-6)}`,
+      title,
+      body,
+      orderId,
+      createdAt: new Date().toISOString(),
+      read: false,
+    },
+    ...(current ?? []),
+  ].slice(0, 24);
 }
 
 function canManageOrder(user: AuthUser | null, order: Order, owned: string[]) {
@@ -399,6 +422,9 @@ export const useCommerce = create<CommerceState>()(
       subscribers: [],
       ownedOrderIds: [],
       loginAttempts: {},
+      saved: [],
+      recentSearches: [],
+      notes: [],
       setHydrated: () => {
         const state = get();
         set({
@@ -406,6 +432,9 @@ export const useCommerce = create<CommerceState>()(
           registered: writeCustomer(state.user, withSeeds(state.registered)),
           ownedOrderIds: state.ownedOrderIds ?? [],
           loginAttempts: {},
+          saved: state.saved ?? [],
+          recentSearches: state.recentSearches ?? [],
+          notes: state.notes ?? [],
         });
       },
       login: (email, password) => {
@@ -547,6 +576,42 @@ export const useCommerce = create<CommerceState>()(
         set({ cart: get().cart.filter((item) => itemKey(item.product.id, item.size, item.color) !== key) });
       },
       clearCart: () => set({ cart: [], coupon: null }),
+      saveForLater: (id, size, color) => {
+        const key = itemKey(id, size, color);
+        const item = get().cart.find((entry) => itemKey(entry.product.id, entry.size, entry.color) === key);
+        if (!item) return { ok: false, message: "That piece is not in the bag." };
+        const saved = get().saved ?? [];
+        const existing = saved.find((entry) => itemKey(entry.product.id, entry.size, entry.color) === key);
+        set({
+          cart: get().cart.filter((entry) => itemKey(entry.product.id, entry.size, entry.color) !== key),
+          saved: existing
+            ? saved.map((entry) =>
+                itemKey(entry.product.id, entry.size, entry.color) === key ? { ...entry, quantity: entry.quantity + item.quantity } : entry,
+              )
+            : [item, ...saved],
+        });
+        return { ok: true, message: `${item.product.name} is saved for later.` };
+      },
+      moveToBag: (id, size, color) => {
+        const key = itemKey(id, size, color);
+        const item = (get().saved ?? []).find((entry) => itemKey(entry.product.id, entry.size, entry.color) === key);
+        if (!item) return { ok: false, message: "That piece is no longer saved." };
+        const result = get().addToCart(item.product, item.quantity, item.size, item.color);
+        if (!result.ok) return result;
+        set({ saved: (get().saved ?? []).filter((entry) => itemKey(entry.product.id, entry.size, entry.color) !== key) });
+        return { ok: true, message: "Moved back to the bag." };
+      },
+      removeSaved: (id, size, color) => {
+        const key = itemKey(id, size, color);
+        set({ saved: (get().saved ?? []).filter((entry) => itemKey(entry.product.id, entry.size, entry.color) !== key) });
+      },
+      rememberSearch: (query) => {
+        const clean = query.trim().slice(0, 60);
+        if (clean.length < 2) return;
+        const prev = get().recentSearches ?? [];
+        set({ recentSearches: [clean, ...prev.filter((item) => item.toLowerCase() !== clean.toLowerCase())].slice(0, 6) });
+      },
+      markNotesRead: () => set({ notes: (get().notes ?? []).map((item) => ({ ...item, read: true })) }),
       toggleWish: (id) => {
         const wishlist = get().wishlist;
         set({ wishlist: wishlist.includes(id) ? wishlist.filter((item) => item !== id) : [id, ...wishlist] });
@@ -571,9 +636,10 @@ export const useCommerce = create<CommerceState>()(
         if (cart.length === 0) return null;
         const subtotal = round2(cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0));
         const priced = quote(subtotal, get().coupon, get().customCoupons);
+        const carriage = withCarriage(priced, { express: options?.express, giftWrap: options?.giftWrap });
         const user = get().user;
         const canTender = Boolean(user && user.role === "customer" && user.email.toLowerCase() === customer.email.toLowerCase());
-        const settled = settle(priced.total, priced.after, canTender ? user!.walletBalance : 0, canTender ? user!.loyaltyPoints : 0, {
+        const settled = settle(carriage.total, priced.after, canTender ? user!.walletBalance : 0, canTender ? user!.loyaltyPoints : 0, {
           useWallet: Boolean(options?.useWallet && canTender),
           points: canTender ? options?.points ?? 0 : 0,
         });
@@ -585,9 +651,9 @@ export const useCommerce = create<CommerceState>()(
           items: cart,
           subtotal,
           discount: priced.discount,
-          shipping: priced.shipping,
+          shipping: carriage.shipping,
           tax: priced.tax,
-          total: priced.total,
+          total: carriage.total,
           loyaltyDiscount: settled.loyaltyDiscount || undefined,
           walletApplied: settled.walletApplied || undefined,
           pointsRedeemed: settled.pointsUsed || undefined,
@@ -596,8 +662,10 @@ export const useCommerce = create<CommerceState>()(
           couponCode: priced.code ?? undefined,
           status: "Confirmed",
           trackingNumber: `TCS-EXP-${stamp.getTime().toString().slice(-8)}`,
-          carrier: "TCS Express",
-          estimatedDeliveryDate: "Within 4–6 days",
+          carrier: options?.express ? "TCS Express Air" : "TCS Express",
+          estimatedDeliveryDate: options?.express ? "Within 1–2 days" : "Within 4–6 days",
+          shippingMethod: options?.express ? "Express" : "Standard",
+          giftWrap: Boolean(options?.giftWrap) || undefined,
         };
         const nextStock = { ...get().stock };
         for (const item of cart) {
@@ -623,6 +691,7 @@ export const useCommerce = create<CommerceState>()(
           registered: writeCustomer(nextUser, withSeeds(get().registered)),
           ownedOrderIds: owned.includes(order.id) ? owned : [...owned, order.id],
           stock: nextStock,
+          notes: noteList(get().notes, "Order confirmed", `${order.id} is on the book.`, order.id),
         });
         if (options?.saveAddress && canTender) {
           get().addAddress({
@@ -689,6 +758,7 @@ export const useCommerce = create<CommerceState>()(
           stock: nextStock,
           user: nextUser,
           registered: writeCustomer(nextUser, registered),
+          notes: noteList(get().notes, "Order cancelled", `${order.id} was cancelled.`, order.id),
         });
         return { ok: true, message: "The order is cancelled and the pieces are back on the floor." };
       },
@@ -713,7 +783,10 @@ export const useCommerce = create<CommerceState>()(
           refund: order.amountDue ?? order.total,
           createdAt: new Date().toISOString(),
         };
-        set({ returns: [request, ...get().returns] });
+        set({
+          returns: [request, ...get().returns],
+          notes: noteList(get().notes, "Return requested", `${request.id} is waiting on the atelier.`, order.id),
+        });
         return { ok: true, message: "Return requested. The atelier will review it." };
       },
       resolveReturn: (id, status) => {
@@ -735,6 +808,12 @@ export const useCommerce = create<CommerceState>()(
           returns: get().returns.map((item) => (item.id === id ? { ...item, status } : item)),
           user: nextUser,
           registered: writeCustomer(nextUser, registered),
+          notes: noteList(
+            get().notes,
+            status === "Refunded" ? "Refund posted" : "Return declined",
+            `${request.id} is ${status.toLowerCase()}.`,
+            order?.id,
+          ),
         });
         return {
           ok: true,
@@ -1017,6 +1096,9 @@ export const useCommerce = create<CommerceState>()(
         alerts: state.alerts,
         subscribers: state.subscribers,
         ownedOrderIds: state.ownedOrderIds,
+        saved: state.saved,
+        recentSearches: state.recentSearches,
+        notes: state.notes,
       }),
     },
   ),

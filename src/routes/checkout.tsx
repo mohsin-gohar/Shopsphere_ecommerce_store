@@ -3,7 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { StoreShell } from "@/components/store/chrome";
-import { money, settle } from "@/lib/commerce/pricing";
+import { EXPRESS_FEE, money, settle, withCarriage, WRAP_FEE } from "@/lib/commerce/pricing";
 import { cartSubtotal, useBagQuote, useCommerce } from "@/lib/commerce/store";
 import type { CustomerInfo } from "@/lib/commerce/types";
 
@@ -46,13 +46,16 @@ function CheckoutPage() {
   const [useWallet, setUseWallet] = useState(false);
   const [points, setPoints] = useState(0);
   const [saveAddress, setSaveAddress] = useState(false);
+  const [express, setExpress] = useState(false);
+  const [giftWrap, setGiftWrap] = useState(false);
   const [addressId, setAddressId] = useState("profile");
   const hydrated = useCommerce((state) => state.hydrated);
   const mine = user ? addresses.filter((item) => item.email === user.email.toLowerCase()) : [];
   const chosen = mine.find((item) => item.id === addressId);
   const canTender = user?.role === "customer";
+  const carriage = withCarriage(priced, { express, giftWrap });
   const settled = settle(
-    priced.total,
+    carriage.total,
     priced.after,
     user && canTender ? user.walletBalance : 0,
     user && canTender ? user.loyaltyPoints : 0,
@@ -77,7 +80,7 @@ function CheckoutPage() {
       <StoreShell>
         <div className="mx-auto max-w-lg px-4 py-20 text-center">
           <h1 className="text-4xl">Checkout needs a bag.</h1>
-          <Link to="/shop" search={{ q: "", category: "All" }} className="btn btn-pine mt-6">
+          <Link to="/shop" search={{ q: "", category: "All", deal: "" }} className="btn btn-pine mt-6">
             Shop the edit
           </Link>
         </div>
@@ -142,7 +145,7 @@ function CheckoutPage() {
                   notes: parsed.data.notes,
                   cardLast4: parsed.data.paymentMethod === "card" && settled.due > 0 ? digits.slice(-4) : undefined,
                 },
-                { useWallet, points, saveAddress },
+                { useWallet, points, saveAddress, express, giftWrap },
               );
               if (!order) {
                 toast.error("The bag was already empty.");
@@ -204,6 +207,32 @@ function CheckoutPage() {
               </fieldset>
             ) : null}
             <fieldset>
+              <legend className="text-sm">Delivery</legend>
+              <div className="mt-2 grid gap-2">
+                <label className="surface flex cursor-pointer gap-3 p-3">
+                  <input type="radio" name="speed" checked={!express} onChange={() => setExpress(false)} />
+                  <span>
+                    <span className="block font-medium">Standard · 4–6 days</span>
+                    <span className="text-sm text-muted">Complimentary over $150, otherwise $12.</span>
+                  </span>
+                </label>
+                <label className="surface flex cursor-pointer gap-3 p-3">
+                  <input type="radio" name="speed" checked={express} onChange={() => setExpress(true)} />
+                  <span>
+                    <span className="block font-medium">Express · 1–2 days · +{money(EXPRESS_FEE)}</span>
+                    <span className="text-sm text-muted">The next air note, when the piece is in the atelier.</span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+            <label className="surface flex cursor-pointer items-center gap-3 p-3 text-sm">
+              <input type="checkbox" checked={giftWrap} onChange={(event) => setGiftWrap(event.target.checked)} />
+              <span>
+                Gift wrap · {money(WRAP_FEE)}
+                <span className="block text-muted">Tissue, a house card, and no price on the parcel.</span>
+              </span>
+            </label>
+            <fieldset>
               <legend className="text-sm">Payment</legend>
               <div className="mt-2 grid gap-2">
                 {METHODS.map((item) => (
@@ -254,8 +283,9 @@ function CheckoutPage() {
           <div className="mt-4 grid gap-1 border-t border-line pt-3 text-sm">
             <Row label="Goods" value={money(subtotal)} />
             <Row label="Reduction" value={priced.discount ? `−${money(priced.discount)}` : "—"} />
-            <Row label="Shipping" value={priced.shipping ? money(priced.shipping) : "Complimentary"} />
+            <Row label="Shipping" value={carriage.shipping ? money(carriage.shipping) : "Complimentary"} />
             <Row label="Tax" value={money(priced.tax)} />
+            {carriage.wrapFee ? <Row label="Gift wrap" value={money(carriage.wrapFee)} /> : null}
             {settled.loyaltyDiscount ? <Row label="Points" value={`−${money(settled.loyaltyDiscount)}`} /> : null}
             {settled.walletApplied ? <Row label="Wallet" value={`−${money(settled.walletApplied)}`} /> : null}
             <Row label="Due" value={money(settled.due)} />
