@@ -18,6 +18,9 @@ const STEPS: Order["status"][] = ["Confirmed", "Processing in Studio", "Dispatch
 function TrackPage() {
   const initial = Route.useSearch().id;
   const orders = useCommerce((state) => state.orders);
+  const user = useCommerce((state) => state.user);
+  const owned = useCommerce((state) => state.ownedOrderIds);
+  const hydrated = useCommerce((state) => state.hydrated);
   const [query, setQuery] = useState(initial);
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(initial);
@@ -29,6 +32,14 @@ function TrackPage() {
     : undefined;
   const emailMismatch = Boolean(found && mail && found.customer.email.toLowerCase() !== mail.trim().toLowerCase());
   const order = emailMismatch ? undefined : found;
+  const verified = Boolean(
+    order &&
+      hydrated &&
+      (user?.role === "admin" ||
+        (user && user.email.toLowerCase() === order.customer.email.toLowerCase()) ||
+        (owned ?? []).includes(order.id) ||
+        (mail && order.customer.email.toLowerCase() === mail.trim().toLowerCase())),
+  );
   const step = order ? STEPS.indexOf(order.status) : -1;
 
   return (
@@ -82,20 +93,26 @@ function TrackPage() {
             </ol>
             )}
             <ul className="mt-6 grid gap-2 border-t border-line pt-4 text-sm">
-              {order.items.map((item) => (
-                <li key={`${item.product.id}-${item.size ?? "os"}-${item.color ?? ""}`} className="flex justify-between">
-                  <span>
-                    {item.product.name}
-                    {item.size ? ` · ${item.size}` : ""}
-                    {item.color ? ` · ${item.color}` : ""}
-                  </span>
-                  <span className="tabular-nums">{money(item.product.price * item.quantity)}</span>
-                </li>
-              ))}
+              {verified ? (
+                order.items.map((item) => (
+                  <li key={`${item.product.id}-${item.size ?? "os"}-${item.color ?? ""}`} className="flex justify-between">
+                    <span>
+                      {item.product.name}
+                      {item.size ? ` · ${item.size}` : ""}
+                      {item.color ? ` · ${item.color}` : ""}
+                    </span>
+                    <span className="tabular-nums">{money(item.product.price * item.quantity)}</span>
+                  </li>
+                ))
+              ) : (
+                <li className="text-muted">Add the email on the order to see the pieces. Cancel and returns stay with the signed-in client.</li>
+              )}
             </ul>
-            <div className="no-print">
-              <OrderActions order={order} />
-            </div>
+            {verified ? (
+              <div className="no-print">
+                <OrderActions order={order} />
+              </div>
+            ) : null}
             <Link to="/order/$id" params={{ id: order.id }} className="mt-4 inline-block text-sm underline">
               Open the receipt
             </Link>

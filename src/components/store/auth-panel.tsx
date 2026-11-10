@@ -26,7 +26,7 @@ export function AuthPanel({ intent }: { intent: "client" | "studio" }) {
       <p className="mt-2 text-sm text-muted">
         {intent === "studio"
           ? "Demonstration access for the operations desk. It lives on this device."
-          : "Profiles stay in this browser. Guest checkout never requires one."}
+          : "Profiles stay in this browser. A password is checked against the profile saved here. Guest checkout never requires one."}
       </p>
 
       {hydrated && user ? (
@@ -40,13 +40,13 @@ export function AuthPanel({ intent }: { intent: "client" | "studio" }) {
 
       {intent === "client" ? (
         <div className="mt-5 flex gap-2">
-          <button type="button" className="chip" data-on={mode === "enter"} onClick={() => setMode("enter")}>
+          <button type="button" className="chip" data-on={mode === "enter"} onClick={() => { setMode("enter"); setError(null); }}>
             Sign in
           </button>
-          <button type="button" className="chip" data-on={mode === "join"} onClick={() => setMode("join")}>
+          <button type="button" className="chip" data-on={mode === "join"} onClick={() => { setMode("join"); setError(null); }}>
             Create profile
           </button>
-          <button type="button" className="chip" data-on={mode === "reset"} onClick={() => setMode("reset")}>
+          <button type="button" className="chip" data-on={mode === "reset"} onClick={() => { setMode("reset"); setError(null); }}>
             Reset password
           </button>
         </div>
@@ -56,6 +56,10 @@ export function AuthPanel({ intent }: { intent: "client" | "studio" }) {
         className="mt-5 grid gap-3"
         onSubmit={(event) => {
           event.preventDefault();
+          if (!hydrated) {
+            setError("The salon is still opening. Try again in a moment.");
+            return;
+          }
           const form = new FormData(event.currentTarget);
           if (mode === "join" && intent === "client") {
             const result = register({
@@ -122,7 +126,8 @@ export function AuthPanel({ intent }: { intent: "client" | "studio" }) {
           <input name="password" type="password" className="field mt-1" value={password} onChange={(event) => setPassword(event.target.value)} />
         </label>
         {error ? <p className="text-sm text-brass">{error}</p> : null}
-        <button className="btn btn-pine" type="submit">
+        {!hydrated ? <p className="text-sm text-muted">Opening the salon…</p> : null}
+        <button className="btn btn-pine" type="submit" disabled={!hydrated}>
           {mode === "join" && intent === "client" ? "Create profile" : mode === "reset" ? "Save new password" : "Enter"}
         </button>
       </form>

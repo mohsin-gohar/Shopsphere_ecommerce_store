@@ -24,7 +24,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let live = true;
     void Promise.resolve(useCommerce.persist.rehydrate()).finally(() => {
-      if (live) useCommerce.setState({ hydrated: true });
+      if (live) useCommerce.getState().setHydrated();
     });
     return () => {
       live = false;

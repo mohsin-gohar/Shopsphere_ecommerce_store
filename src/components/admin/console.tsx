@@ -731,6 +731,12 @@ function Kpi({ label, value, note }: { label: string; value: string; note: strin
   );
 }
 
+function csvCell(value: string | number) {
+  const text = String(value ?? "");
+  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
+
 function downloadClients(
   clients: Array<{ name: string; email: string; city: string; tier: string; orders: number; spent: number }>,
 ) {
@@ -738,7 +744,7 @@ function downloadClients(
     ["Name", "Email", "City", "Tier", "Orders", "Spent"],
     ...clients.map((client) => [client.name, client.email, client.city, client.tier, String(client.orders), client.spent.toFixed(2)]),
   ];
-  const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const csv = rows.map((row) => row.map((cell) => csvCell(cell)).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -762,7 +768,7 @@ function downloadOrders(orders: Order[]) {
       order.trackingNumber,
     ]),
   ];
-  const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const csv = rows.map((row) => row.map((cell) => csvCell(cell)).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");

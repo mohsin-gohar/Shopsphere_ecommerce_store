@@ -47,6 +47,7 @@ function CheckoutPage() {
   const [points, setPoints] = useState(0);
   const [saveAddress, setSaveAddress] = useState(false);
   const [addressId, setAddressId] = useState("profile");
+  const hydrated = useCommerce((state) => state.hydrated);
   const mine = user ? addresses.filter((item) => item.email === user.email.toLowerCase()) : [];
   const chosen = mine.find((item) => item.id === addressId);
   const canTender = user?.role === "customer";
@@ -60,6 +61,16 @@ function CheckoutPage() {
       points: canTender ? points : 0,
     },
   );
+
+  if (!hydrated) {
+    return (
+      <StoreShell>
+        <div className="mx-auto max-w-lg px-4 py-20 text-center">
+          <h1 className="text-4xl">Opening checkout…</h1>
+        </div>
+      </StoreShell>
+    );
+  }
 
   if (cart.length === 0) {
     return (

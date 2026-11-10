@@ -14,6 +14,8 @@ function AdminLogin() {
           <p className="text-xs tracking-[0.2em] text-brass uppercase">Staff</p>
           <h2 className="mt-3 text-5xl">The console watches orders, stock, and clients.</h2>
           <p className="mt-4 text-muted">
+            Demonstration desk only. Nothing here charges a card.
+            <br />
             Studio key: admin@shopsphere.studio
             <br />
             Password: admin123

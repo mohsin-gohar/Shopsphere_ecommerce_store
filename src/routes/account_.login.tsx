@@ -13,7 +13,9 @@ function LoginPage() {
         <div>
           <p className="text-xs tracking-[0.2em] text-brass uppercase">Salon</p>
           <h2 className="mt-3 text-5xl">Your orders, addresses, and loyalty live here.</h2>
-          <p className="mt-4 text-muted">The sample client already has two orders in transit and delivered. Password guest123, or any four characters if the email is new.</p>
+          <p className="mt-4 text-muted">
+            The sample client is Mohsin Gohar, password guest123. A new email needs its own password. Unknown emails cannot sign in, and an existing profile cannot be overwritten.
+          </p>
           <Link to="/admin/login" className="mt-6 inline-block text-sm underline">
             Studio staff enter here
           </Link>

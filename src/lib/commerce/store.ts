@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { FALLBACK_PRODUCTS, INITIAL_SAMPLE_ORDERS } from "./catalog";
 import { quote, round2, settle } from "./pricing";
+import { hashSecret, passwordMatches } from "./secret";
 import type {
   AuthUser,
   CartItem,
@@ -24,6 +25,13 @@ export type RegisteredUser = {
   email: string;
   password: string;
   phone: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  loyaltyPoints?: number;
+  walletBalance?: number;
+  membershipTier?: AuthUser["membershipTier"];
+  joinedDate?: string;
 };
 
 const ADMIN_EMAILS = new Set(["admin@shopsphere.studio", "admin@shopsphere.com"]);
@@ -52,6 +60,8 @@ type CommerceState = {
   questions: ProductQuestion[];
   alerts: StockAlert[];
   subscribers: LetterSubscriber[];
+  ownedOrderIds: string[];
+  loginAttempts: Record<string, { count: number; until: number }>;
   setHydrated: () => void;
   login: (email: string, password: string) => { ok: true; user: AuthUser } | { ok: false; error: string };
   register: (input: { name: string; email: string; password: string; phone: string }) => { ok: true; user: AuthUser } | { ok: false; error: string };
@@ -134,21 +144,106 @@ function adminUser(email: string): AuthUser {
 }
 
 function customerUser(email: string, known?: RegisteredUser): AuthUser {
-  const preset = email === "mohsingohar759@gmail.com";
   return {
-    id: preset ? "USR-CUST-8491" : `USR-${Math.abs(hashCode(email))}`,
-    name: known?.name ?? (preset ? "Mohsin Gohar" : titleCase(email.split("@")[0] || "Guest")),
+    id: email === "mohsingohar759@gmail.com" ? "USR-CUST-8491" : `USR-${Math.abs(hashCode(email))}`,
+    name: known?.name || titleCase(email.split("@")[0] || "Client"),
     email,
     role: "customer",
-    membershipTier: preset ? "Gold VIP" : known ? "Silver Collector" : "Bronze Member",
-    loyaltyPoints: preset ? 1450 : known ? 500 : 120,
-    walletBalance: preset ? 45 : 25,
-    phone: known?.phone || (preset ? "+92 300 1234567" : ""),
-    address: preset ? "House 14, Street 4, Sector G-11/3" : "",
-    city: preset ? "Islamabad" : "",
-    postalCode: preset ? "44000" : "",
+    membershipTier: known?.membershipTier ?? "Bronze Member",
+    loyaltyPoints: known?.loyaltyPoints ?? 120,
+    walletBalance: known?.walletBalance ?? 25,
+    phone: known?.phone ?? "",
+    address: known?.address ?? "",
+    city: known?.city ?? "",
+    postalCode: known?.postalCode ?? "",
+    joinedDate: known?.joinedDate ?? "Oct 2026",
+  };
+}
+
+function sampleAccount(): RegisteredUser {
+  return {
+    name: "Mohsin Gohar",
+    email: "mohsingohar759@gmail.com",
+    password: hashSecret("guest123"),
+    phone: "+92 300 1234567",
+    address: "House 14, Street 4, Sector G-11/3",
+    city: "Islamabad",
+    postalCode: "44000",
+    loyaltyPoints: 1450,
+    walletBalance: 45,
+    membershipTier: "Gold VIP",
     joinedDate: "Oct 2026",
   };
+}
+
+function withSeeds(list: RegisteredUser[]) {
+  const seeded = list.some((entry) => entry.email === "mohsingohar759@gmail.com") ? list : [sampleAccount(), ...list];
+  return seeded.map((entry) => (entry.email === "mohsingohar759@gmail.com" ? healSample(entry) : entry));
+}
+
+function healSample(entry: RegisteredUser): RegisteredUser {
+  const sample = sampleAccount();
+  return {
+    ...sample,
+    ...entry,
+    name: entry.name || sample.name,
+    phone: entry.phone || sample.phone,
+    address: entry.address ?? sample.address,
+    city: entry.city ?? sample.city,
+    postalCode: entry.postalCode ?? sample.postalCode,
+    loyaltyPoints: entry.loyaltyPoints ?? sample.loyaltyPoints,
+    walletBalance: entry.walletBalance ?? sample.walletBalance,
+    membershipTier: entry.membershipTier ?? sample.membershipTier,
+    password: entry.password || sample.password,
+  };
+}
+
+function writeCustomer(user: AuthUser | null, registered: RegisteredUser[]) {
+  if (!user || user.role !== "customer") return registered;
+  const email = user.email.toLowerCase();
+  return registered.map((entry) =>
+    entry.email === email
+      ? {
+          ...entry,
+          name: user.name,
+          phone: user.phone,
+          address: user.address,
+          city: user.city,
+          postalCode: user.postalCode,
+          loyaltyPoints: user.loyaltyPoints,
+          walletBalance: round2(user.walletBalance),
+          membershipTier: user.membershipTier,
+        }
+      : entry,
+  );
+}
+
+function lockMessage(attempts: CommerceState["loginAttempts"], email: string) {
+  const row = attempts[email];
+  if (!row || row.until <= Date.now()) return null;
+  const seconds = Math.max(1, Math.ceil((row.until - Date.now()) / 1000));
+  return `Too many attempts. Try again in ${seconds}s.`;
+}
+
+function noteFailure(attempts: CommerceState["loginAttempts"], email: string) {
+  const row = attempts[email];
+  const expired = Boolean(row && row.until > 0 && row.until <= Date.now());
+  const count = !row || expired ? 1 : row.count + 1;
+  if (count >= 5) return { ...attempts, [email]: { count: 0, until: Date.now() + 30_000 } };
+  return { ...attempts, [email]: { count, until: 0 } };
+}
+
+function noteSuccess(attempts: CommerceState["loginAttempts"], email: string) {
+  if (!attempts[email]) return attempts;
+  const next = { ...attempts };
+  delete next[email];
+  return next;
+}
+
+function canManageOrder(user: AuthUser | null, order: Order, owned: string[]) {
+  if (user?.role === "admin") return true;
+  if (user && sameAccount(user, order.customer.email)) return true;
+  return owned.includes(order.id);
 }
 
 function itemKey(id: number, size?: string, color?: string) {
@@ -302,72 +397,115 @@ export const useCommerce = create<CommerceState>()(
       questions: [],
       alerts: [],
       subscribers: [],
-      setHydrated: () => set({ hydrated: true }),
+      ownedOrderIds: [],
+      loginAttempts: {},
+      setHydrated: () => {
+        const state = get();
+        set({
+          hydrated: true,
+          registered: writeCustomer(state.user, withSeeds(state.registered)),
+          ownedOrderIds: state.ownedOrderIds ?? [],
+          loginAttempts: {},
+        });
+      },
       login: (email, password) => {
         const cleanEmail = email.trim().toLowerCase();
         const cleanPassword = password.trim();
-        if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail) || cleanEmail.length > 120) {
           return { ok: false, error: "Enter a valid email address." };
         }
-        if (cleanPassword.length < 4) {
-          return { ok: false, error: "Password must be at least 4 characters." };
+        if (cleanPassword.length < 4 || cleanPassword.length > 72) {
+          return { ok: false, error: "Password must be 4 to 72 characters." };
         }
+        const locked = lockMessage(get().loginAttempts, cleanEmail);
+        if (locked) return { ok: false, error: locked };
+        const fail = (registered = get().registered) => {
+          const loginAttempts = noteFailure(get().loginAttempts, cleanEmail);
+          set({ registered, loginAttempts });
+          return { ok: false as const, error: lockMessage(loginAttempts, cleanEmail) ?? "Email or password is not recognized." };
+        };
         if (ADMIN_EMAILS.has(cleanEmail)) {
-          if (cleanPassword !== "admin123") {
-            return { ok: false, error: "That studio key is not recognized." };
-          }
+          if (cleanPassword !== "admin123") return fail();
           const user = adminUser(cleanEmail);
-          set({ user });
-          return { ok: true, user };
+          set({ user, loginAttempts: noteSuccess(get().loginAttempts, cleanEmail) });
+          return { ok: true as const, user };
         }
-        const known = get().registered.find((entry) => entry.email === cleanEmail);
-        if (known && known.password !== cleanPassword) {
-          return { ok: false, error: "Password does not match this atelier profile." };
-        }
-        const user = customerUser(cleanEmail, known);
-        set({ user });
+        const registered = withSeeds(get().registered);
+        const known = registered.find((entry) => entry.email === cleanEmail);
+        if (!known || !passwordMatches(known.password, cleanPassword)) return fail(registered);
+        const upgraded = known.password === cleanPassword ? { ...known, password: hashSecret(cleanPassword) } : known;
+        const user = customerUser(cleanEmail, upgraded);
+        const stored = registered.map((entry) => (entry.email === cleanEmail ? upgraded : entry));
+        set({
+          user,
+          registered: writeCustomer(user, stored),
+          loginAttempts: noteSuccess(get().loginAttempts, cleanEmail),
+        });
         return { ok: true, user };
       },
       register: ({ name, email, password, phone }) => {
         const cleanEmail = email.trim().toLowerCase();
         const cleanName = name.trim();
-        if (cleanName.length < 2) return { ok: false, error: "Please enter your full name." };
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        const cleanPassword = password.trim();
+        if (cleanName.length < 2 || cleanName.length > 80) return { ok: false, error: "Please enter your full name." };
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail) || cleanEmail.length > 120) {
           return { ok: false, error: "Enter a valid email address." };
         }
-        if (password.trim().length < 4) return { ok: false, error: "Password must be at least 4 characters." };
+        if (cleanPassword.length < 4 || cleanPassword.length > 72) {
+          return { ok: false, error: "Password must be 4 to 72 characters." };
+        }
         if (ADMIN_EMAILS.has(cleanEmail)) return { ok: false, error: "This address belongs to the studio." };
-        const existing = get().registered.find((entry) => entry.email === cleanEmail);
+        const registered = withSeeds(get().registered);
+        if (registered.some((entry) => entry.email === cleanEmail)) {
+          set({ registered });
+          return { ok: false, error: "A profile with this email already exists. Sign in, or reset the password." };
+        }
         const record: RegisteredUser = {
           name: cleanName,
           email: cleanEmail,
-          password: password.trim(),
-          phone: phone.trim(),
+          password: hashSecret(cleanPassword),
+          phone: phone.trim().slice(0, 24),
+          address: "",
+          city: "",
+          postalCode: "",
+          loyaltyPoints: 120,
+          walletBalance: 25,
+          membershipTier: "Bronze Member",
+          joinedDate: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
         };
-        set({
-          registered: existing
-            ? get().registered.map((entry) => (entry.email === cleanEmail ? record : entry))
-            : [...get().registered, record],
-        });
         const user = customerUser(cleanEmail, record);
-        set({ user });
+        set({
+          registered: [...registered, record],
+          user,
+          loginAttempts: noteSuccess(get().loginAttempts, cleanEmail),
+        });
         return { ok: true, user };
       },
-      logout: () => set({ user: null }),
+      logout: () => {
+        const { user, registered } = get();
+        set({ user: null, registered: writeCustomer(user, withSeeds(registered)) });
+      },
       updateProfile: (patch) => {
         const current = get().user;
-        if (!current) return;
-        set({ user: { ...current, ...patch } });
+        if (!current || current.role !== "customer") return;
+        const next = { ...current, ...patch };
+        set({ user: next, registered: writeCustomer(next, withSeeds(get().registered)) });
       },
       priceOf: (product) => get().priceOverrides[product.id] ?? product.price,
       stockOf: (id) => {
         const override = get().stock[id];
         return typeof override === "number" ? override : 8 + (id % 17);
       },
-      setStock: (id, qty) => set({ stock: { ...get().stock, [id]: Math.max(0, Math.round(qty)) } }),
-      setPrice: (id, price) =>
-        set({ priceOverrides: { ...get().priceOverrides, [id]: round2(Math.max(1, price)) } }),
+      setStock: (id, qty) => {
+        if (get().user?.role !== "admin") return;
+        set({ stock: { ...get().stock, [id]: Math.max(0, Math.round(qty)) } });
+      },
+      setPrice: (id, price) => {
+        if (get().user?.role !== "admin") return;
+        set({ priceOverrides: { ...get().priceOverrides, [id]: round2(Math.max(1, price)) } });
+      },
       toggleHidden: (id) => {
+        if (get().user?.role !== "admin") return;
         const hidden = get().hidden;
         set({ hidden: hidden.includes(id) ? hidden.filter((item) => item !== id) : [...hidden, id] });
       },
@@ -467,19 +605,23 @@ export const useCommerce = create<CommerceState>()(
           nextStock[item.product.id] = Math.max(0, current - item.quantity);
         }
         const earned = Math.round(settled.due);
+        const nextUser =
+          user && canTender
+            ? {
+                ...user,
+                loyaltyPoints: user.loyaltyPoints - settled.pointsUsed + earned,
+                walletBalance: round2(user.walletBalance - settled.walletApplied),
+              }
+            : user;
+        const owned = get().ownedOrderIds ?? [];
         set({
           orders: [order, ...get().orders],
           cart: [],
           coupon: null,
           cartOpen: false,
-          user:
-            user && canTender
-              ? {
-                  ...user,
-                  loyaltyPoints: user.loyaltyPoints - settled.pointsUsed + earned,
-                  walletBalance: round2(user.walletBalance - settled.walletApplied),
-                }
-              : user,
+          user: nextUser,
+          registered: writeCustomer(nextUser, withSeeds(get().registered)),
+          ownedOrderIds: owned.includes(order.id) ? owned : [...owned, order.id],
           stock: nextStock,
         });
         if (options?.saveAddress && canTender) {
@@ -495,17 +637,24 @@ export const useCommerce = create<CommerceState>()(
         }
         return order;
       },
-      updateOrderStatus: (id, status) =>
+      updateOrderStatus: (id, status) => {
+        if (get().user?.role !== "admin") return;
         set({
           orders: get().orders.map((order) => (order.id === id ? { ...order, status } : order)),
-        }),
-      updateDispatch: (id, patch) =>
+        });
+      },
+      updateDispatch: (id, patch) => {
+        if (get().user?.role !== "admin") return;
         set({
           orders: get().orders.map((order) => (order.id === id ? { ...order, ...patch } : order)),
-        }),
+        });
+      },
       cancelOrder: (id) => {
         const order = get().orders.find((item) => item.id === id);
         if (!order) return { ok: false, message: "That order is not on the book." };
+        if (!canManageOrder(get().user, order, get().ownedOrderIds ?? [])) {
+          return { ok: false, message: "Only the client who placed this order can cancel it." };
+        }
         if (order.status !== "Confirmed") return { ok: false, message: "Only a confirmed order can be cancelled." };
         const nextStock = { ...get().stock };
         for (const item of order.items) {
@@ -513,24 +662,42 @@ export const useCommerce = create<CommerceState>()(
           nextStock[item.product.id] = current + item.quantity;
         }
         const user = get().user;
-        const restore = sameAccount(user, order.customer.email);
+        const restore = Boolean(user && user.role === "customer" && sameAccount(user, order.customer.email));
+        const nextUser =
+          user && restore
+            ? {
+                ...user,
+                walletBalance: round2(user.walletBalance + (order.walletApplied ?? 0)),
+                loyaltyPoints: user.loyaltyPoints + (order.pointsRedeemed ?? 0),
+              }
+            : user;
+        let registered = withSeeds(get().registered);
+        if (!restore) {
+          const email = order.customer.email.toLowerCase();
+          registered = registered.map((entry) =>
+            entry.email === email
+              ? {
+                  ...entry,
+                  walletBalance: round2((entry.walletBalance ?? 0) + (order.walletApplied ?? 0)),
+                  loyaltyPoints: (entry.loyaltyPoints ?? 0) + (order.pointsRedeemed ?? 0),
+                }
+              : entry,
+          );
+        }
         set({
           orders: get().orders.map((item) => (item.id === id ? { ...item, status: "Cancelled" } : item)),
           stock: nextStock,
-          user:
-            user && restore
-              ? {
-                  ...user,
-                  walletBalance: round2(user.walletBalance + (order.walletApplied ?? 0)),
-                  loyaltyPoints: user.loyaltyPoints + (order.pointsRedeemed ?? 0),
-                }
-              : user,
+          user: nextUser,
+          registered: writeCustomer(nextUser, registered),
         });
         return { ok: true, message: "The order is cancelled and the pieces are back on the floor." };
       },
       requestReturn: (orderId, reason, note) => {
         const order = get().orders.find((item) => item.id === orderId);
         if (!order) return { ok: false, message: "That order is not on the book." };
+        if (!canManageOrder(get().user, order, get().ownedOrderIds ?? [])) {
+          return { ok: false, message: "Only the client who placed this order can request a return." };
+        }
         if (order.status === "Cancelled") return { ok: false, message: "A cancelled order cannot be returned." };
         if (order.status !== "Delivered") return { ok: false, message: "Returns open once the piece has been delivered." };
         if (get().returns.some((item) => item.orderId === orderId && item.status !== "Declined")) {
@@ -540,8 +707,8 @@ export const useCommerce = create<CommerceState>()(
           id: `RET-${Date.now().toString().slice(-6)}`,
           orderId,
           email: order.customer.email,
-          reason: reason.trim() || "Changed my mind",
-          note: note.trim(),
+          reason: reason.trim().slice(0, 80) || "Changed my mind",
+          note: note.trim().slice(0, 500),
           status: "Requested",
           refund: order.amountDue ?? order.total,
           createdAt: new Date().toISOString(),
@@ -550,14 +717,24 @@ export const useCommerce = create<CommerceState>()(
         return { ok: true, message: "Return requested. The atelier will review it." };
       },
       resolveReturn: (id, status) => {
+        if (get().user?.role !== "admin") return { ok: false, message: "Only the studio can close a return." };
         const request = get().returns.find((item) => item.id === id);
         if (!request || request.status !== "Requested") return { ok: false, message: "That return is already closed." };
         const order = get().orders.find((item) => item.id === request.orderId);
+        let registered = withSeeds(get().registered);
+        if (status === "Refunded" && order) {
+          const email = order.customer.email.toLowerCase();
+          registered = registered.map((entry) =>
+            entry.email === email ? { ...entry, walletBalance: round2((entry.walletBalance ?? 0) + request.refund) } : entry,
+          );
+        }
         const user = get().user;
-        const credit = status === "Refunded" && order && sameAccount(user, order.customer.email) ? request.refund : 0;
+        const signedIsCustomer = Boolean(status === "Refunded" && order && user && sameAccount(user, order.customer.email));
+        const nextUser = user && signedIsCustomer ? { ...user, walletBalance: round2(user.walletBalance + request.refund) } : user;
         set({
           returns: get().returns.map((item) => (item.id === id ? { ...item, status } : item)),
-          user: user && credit ? { ...user, walletBalance: round2(user.walletBalance + credit) } : user,
+          user: nextUser,
+          registered: writeCustomer(nextUser, registered),
         });
         return {
           ok: true,
@@ -567,6 +744,9 @@ export const useCommerce = create<CommerceState>()(
       reorder: (orderId) => {
         const order = get().orders.find((item) => item.id === orderId);
         if (!order) return { ok: false, message: "That order is not on the book." };
+        if (!canManageOrder(get().user, order, get().ownedOrderIds ?? [])) {
+          return { ok: false, message: "That order is not on your book." };
+        }
         let added = 0;
         for (const item of order.items) {
           const result = get().addToCart(item.product, item.quantity, item.size, item.color);
@@ -576,8 +756,9 @@ export const useCommerce = create<CommerceState>()(
         return { ok: true, message: added === order.items.length ? "The order is back in your bag." : "What we still have is in your bag." };
       },
       addAddress: (input) => {
-        const email = (input.email ?? get().user?.email ?? "").trim().toLowerCase();
-        if (!email) return { ok: false, message: "Sign in before saving an address." };
+        const actor = get().user;
+        if (!actor || actor.role !== "customer") return { ok: false, message: "Sign in before saving an address." };
+        const email = actor.email.toLowerCase();
         if (input.address.trim().length < 5 || input.city.trim().length < 2) {
           return { ok: false, message: "Add a street and a city." };
         }
@@ -598,7 +779,17 @@ export const useCommerce = create<CommerceState>()(
         set({ addresses: [next, ...get().addresses] });
         return { ok: true, message: "Address saved." };
       },
-      removeAddress: (id) => set({ addresses: get().addresses.filter((item) => item.id !== id) }),
+      removeAddress: (id) => {
+        const user = get().user;
+        if (!user) return;
+        set({
+          addresses: get().addresses.filter((item) => {
+            if (item.id !== id) return true;
+            if (user.role === "admin") return false;
+            return item.email !== user.email.toLowerCase();
+          }),
+        });
+      },
       addReview: (input) => {
         if (input.title.trim().length < 2 || input.body.trim().length < 8) {
           return { ok: false, message: "Write a short title and a note of at least a sentence." };
@@ -616,6 +807,7 @@ export const useCommerce = create<CommerceState>()(
         return { ok: true, message: "Your note is on the piece." };
       },
       addCoupon: (input) => {
+        if (get().user?.role !== "admin") return { ok: false, message: "Only the studio can add a code." };
         const code = input.code.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
         if (code.length < 4) return { ok: false, message: "Codes need at least 4 letters or numbers." };
         if (["STUDENT20", "WELCOME10", "SAVE15"].includes(code)) return { ok: false, message: "That house code already exists." };
@@ -632,8 +824,12 @@ export const useCommerce = create<CommerceState>()(
         });
         return { ok: true, message: `${code} is live.` };
       },
-      removeCoupon: (code) => set({ customCoupons: get().customCoupons.filter((item) => item.code !== code) }),
+      removeCoupon: (code) => {
+        if (get().user?.role !== "admin") return;
+        set({ customCoupons: get().customCoupons.filter((item) => item.code !== code) });
+      },
       addProduct: (input) => {
+        if (get().user?.role !== "admin") return { ok: false, message: "Only the studio can add a piece." };
         const name = input.name.trim();
         if (name.length < 2) return { ok: false, message: "Name the piece." };
         if (!/^https?:\/\//.test(input.image.trim())) return { ok: false, message: "Use a full image URL." };
@@ -659,6 +855,7 @@ export const useCommerce = create<CommerceState>()(
         return { ok: true, message: `${name} is on the floor.` };
       },
       updateProduct: (id, patch) => {
+        if (get().user?.role !== "admin") return { ok: false, message: "Only the studio can edit a piece." };
         const name = patch.name?.trim();
         if (name !== undefined && name.length < 2) return { ok: false, message: "Name the piece." };
         const next: ProductEdit = { ...(get().productEdits?.[id] ?? {}) };
@@ -713,6 +910,7 @@ export const useCommerce = create<CommerceState>()(
         return { ok: true, message: "Question sent to the atelier." };
       },
       answerQuestion: (id, answer) => {
+        if (get().user?.role !== "admin") return { ok: false, message: "Only the studio can answer." };
         const body = answer.trim();
         if (body.length < 2) return { ok: false, message: "Write an answer." };
         set({
@@ -722,39 +920,40 @@ export const useCommerce = create<CommerceState>()(
       },
       changePassword: (current, next) => {
         const user = get().user;
-        if (!user) return { ok: false, message: "Sign in first." };
-        if (next.trim().length < 4) return { ok: false, message: "Use at least 4 characters." };
-        if (user.role === "admin") return { ok: false, message: "The studio key stays admin123 for this demonstration." };
-        const known = get().registered.find((entry) => entry.email === user.email.toLowerCase());
-        if (known && known.password !== current.trim()) return { ok: false, message: "Current password does not match." };
-        const record: RegisteredUser = known ?? {
-          name: user.name,
-          email: user.email.toLowerCase(),
-          password: next.trim(),
-          phone: user.phone,
-        };
-        record.password = next.trim();
+        if (!user || user.role !== "customer") {
+          return { ok: false, message: user?.role === "admin" ? "The studio key cannot be changed here." : "Sign in first." };
+        }
+        const nextPassword = next.trim();
+        const currentPassword = current.trim();
+        if (nextPassword.length < 4 || nextPassword.length > 72) return { ok: false, message: "Use 4 to 72 characters." };
+        if (nextPassword === currentPassword) return { ok: false, message: "Choose a different password." };
+        const registered = withSeeds(get().registered);
+        const known = registered.find((entry) => entry.email === user.email.toLowerCase());
+        if (!known || !passwordMatches(known.password, currentPassword)) {
+          return { ok: false, message: "Current password does not match." };
+        }
+        const record = { ...known, password: hashSecret(nextPassword) };
         set({
-          registered: [record, ...get().registered.filter((entry) => entry.email !== record.email)],
+          registered: registered.map((entry) => (entry.email === record.email ? record : entry)),
         });
         return { ok: true, message: "Password updated on this device." };
       },
       resetPassword: (email, next) => {
         const clean = email.trim().toLowerCase();
-        if (ADMIN_EMAILS.has(clean)) return { ok: false, message: "The studio key is admin123." };
-        if (next.trim().length < 4) return { ok: false, message: "Use at least 4 characters." };
-        const known = get().registered.find((entry) => entry.email === clean);
-        if (!known && clean !== "mohsingohar759@gmail.com") {
+        const nextPassword = next.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) return { ok: false, message: "Enter a valid email address." };
+        if (ADMIN_EMAILS.has(clean)) return { ok: false, message: "Studio keys cannot be reset from the salon." };
+        if (nextPassword.length < 4 || nextPassword.length > 72) return { ok: false, message: "Use 4 to 72 characters." };
+        const registered = withSeeds(get().registered);
+        const known = registered.find((entry) => entry.email === clean);
+        if (!known) {
+          set({ registered });
           return { ok: false, message: "No profile with that email. Create one instead." };
         }
-        const record: RegisteredUser = {
-          name: known?.name ?? "Mohsin Gohar",
-          email: clean,
-          password: next.trim(),
-          phone: known?.phone ?? "",
-        };
+        const record = { ...known, password: hashSecret(nextPassword) };
         set({
-          registered: [record, ...get().registered.filter((entry) => entry.email !== clean)],
+          registered: registered.map((entry) => (entry.email === clean ? record : entry)),
+          loginAttempts: noteSuccess(get().loginAttempts, clean),
         });
         return { ok: true, message: "Password reset. Sign in with the new one." };
       },
@@ -817,6 +1016,7 @@ export const useCommerce = create<CommerceState>()(
         questions: state.questions,
         alerts: state.alerts,
         subscribers: state.subscribers,
+        ownedOrderIds: state.ownedOrderIds,
       }),
     },
   ),

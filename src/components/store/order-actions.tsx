@@ -10,9 +10,19 @@ export function OrderActions({ order }: { order: Order }) {
   const requestReturn = useCommerce((state) => state.requestReturn);
   const reorder = useCommerce((state) => state.reorder);
   const returns = useCommerce((state) => state.returns);
+  const user = useCommerce((state) => state.user);
+  const owned = useCommerce((state) => state.ownedOrderIds);
+  const hydrated = useCommerce((state) => state.hydrated);
+  const allowed =
+    hydrated &&
+    (user?.role === "admin" ||
+      Boolean(user && user.email.toLowerCase() === order.customer.email.toLowerCase()) ||
+      (owned ?? []).includes(order.id));
   const open = returns.find((item) => item.orderId === order.id && item.status !== "Declined");
   const [reason, setReason] = useState(REASONS[0]);
   const [note, setNote] = useState("");
+
+  if (!allowed) return null;
 
   return (
     <div className="mt-6 grid gap-4">
