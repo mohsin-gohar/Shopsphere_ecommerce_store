@@ -1,3 +1,4 @@
+import { curateCatalog } from "./curate";
 import { FALLBACK_CATEGORIES, FALLBACK_PRODUCTS } from "./catalog";
 import type { Category, Product } from "./types";
 
@@ -18,46 +19,20 @@ interface DummyJsonItem {
   images?: string[];
 }
 
-const BLOCKED = [
-  "furniture",
-  "groceries",
-  "home-decoration",
-  "kitchen-accessories",
-  "laptops",
-  "mobile-accessories",
-  "motorcycle",
-  "smartphones",
-  "sports-accessories",
-  "tablets",
-  "vehicle",
-  "beauty",
-  "fragrances",
-  "skin-care",
-  "cosmetics",
-];
+const FASHION_ROOMS: Record<string, Product["category"]> = {
+  "mens-shirts": "Men",
+  tops: "Women",
+  "womens-dresses": "Women",
+  "mens-shoes": "Shoes",
+  "womens-shoes": "Shoes",
+  "mens-watches": "Accessories",
+  "womens-watches": "Accessories",
+  "womens-bags": "Accessories",
+  "womens-jewellery": "Accessories",
+  sunglasses: "Accessories",
+};
 
-function mapDummy(item: DummyJsonItem, index: number): Product {
-  const cat = (item.category || "").toLowerCase();
-  const title = (item.title || "").toLowerCase();
-  let category = "Accessories";
-  if (
-    cat.includes("mens-shirts") ||
-    cat.includes("mens-clothing") ||
-    /shirt|suit|hoodie|jacket|pant|t-shirt/.test(title)
-  ) {
-    category = "Men";
-  } else if (
-    cat.includes("womens") ||
-    cat.includes("tops") ||
-    /dress|blouse|gown|skirt|sari/.test(title)
-  ) {
-    category = "Women";
-  } else if (cat.includes("shoes") || /shoe|sneaker|boot|loafer|heel|sandal/.test(title)) {
-    category = "Shoes";
-  } else if (/watch|bag|jewel|sunglass|wallet/.test(cat + title)) {
-    category = "Accessories";
-  }
-
+function mapDummy(item: DummyJsonItem, index: number, category: Product["category"]): Product {
   let badge: string | undefined;
   if ((item.discountPercentage ?? 0) > 15) badge = "Sale";
   else if ((item.rating ?? 0) >= 4.7) badge = "Top Rated";
@@ -105,14 +80,14 @@ export async function fetchProducts(): Promise<{ data: Product[]; source: "api" 
     let dummyProducts: Product[] = [];
     if (dummyRes.status === "fulfilled" && dummyRes.value.ok) {
       const dummyJson = (await dummyRes.value.json()) as { products?: DummyJsonItem[] };
-      const fashion = (dummyJson.products ?? []).filter((item) => {
-        const category = (item.category || "").toLowerCase();
-        return !BLOCKED.some((term) => category.includes(term));
+      const fashion = (dummyJson.products ?? []).flatMap((item) => {
+        const category = FASHION_ROOMS[(item.category || "").toLowerCase()];
+        return category ? [item] : [];
       });
-      dummyProducts = fashion.map(mapDummy);
+      dummyProducts = fashion.map((item, index) => mapDummy(item, index, FASHION_ROOMS[item.category.toLowerCase()]));
     }
 
-    const combined = dedupe([...baseProducts, ...dummyProducts]);
+    const combined = curateCatalog(dedupe([...baseProducts, ...dummyProducts]));
     if (combined.length >= 20) return { data: combined, source: "api" };
     throw new Error("Catalog response was too thin");
   } catch (error) {

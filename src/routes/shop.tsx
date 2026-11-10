@@ -128,6 +128,27 @@ function ShopPage() {
         <div className="mt-6 grid gap-8 lg:grid-cols-[16rem_1fr]">
           <aside className={filtersOpen ? "surface h-fit p-4" : "surface hidden h-fit p-4 lg:block"}>
             <p className="text-xs tracking-[0.16em] text-muted uppercase">Refine</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {[
+                { label: "Any price", value: null as number | null },
+                { label: "Under $50", value: 50 },
+                { label: "Under $100", value: 100 },
+                { label: "Under $150", value: 150 },
+              ].map((band) => (
+                <button
+                  key={band.label}
+                  type="button"
+                  className="chip"
+                  data-on={band.value === null ? maxPrice === null : maxPrice === band.value}
+                  onClick={() => {
+                    setMaxPrice(band.value);
+                    setPage(1);
+                  }}
+                >
+                  {band.label}
+                </button>
+              ))}
+            </div>
             <label className="mt-4 block text-sm">
               Up to ${cap}
               <input

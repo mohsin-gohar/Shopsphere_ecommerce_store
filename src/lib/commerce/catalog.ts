@@ -1,4 +1,5 @@
-import { Product, Category, Order } from './types';
+import { curateCatalog } from "./curate";
+import { Product, Category, Order } from "./types";
 
 export const FALLBACK_CATEGORIES: Category[] = [
   {
@@ -27,7 +28,7 @@ export const FALLBACK_CATEGORIES: Category[] = [
   }
 ];
 
-export const FALLBACK_PRODUCTS: Product[] = [
+const RAW_PRODUCTS: Product[] = [
   {
     "id": 1,
     "name": "Classic Oversized Shirt",
@@ -881,6 +882,8 @@ export const FALLBACK_PRODUCTS: Product[] = [
     "image": "https://cdn.dummyjson.com/product-images/mens-watches/rolex-submariner-watch/thumbnail.webp"
   }
 ];
+
+export const FALLBACK_PRODUCTS: Product[] = curateCatalog(RAW_PRODUCTS);
 
 export const INITIAL_SAMPLE_ORDERS: Order[] = [
   {
